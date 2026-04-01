@@ -1,0 +1,19 @@
+<div class="stats-row">
+  <div class="stat-card"><div class="n">{{assets.length}}</div><div class="l">Assets</div></div>
+  <div class="stat-card critical"><div class="n">{{critical}}</div><div class="l">Critical</div></div>
+  <div class="stat-card warning"><div class="n">{{warning}}</div><div class="l">Warning</div></div>
+  <div class="stat-card normal"><div class="n">{{normal}}</div><div class="l">Normal</div></div>
+</div>
+
+<div class="asset-grid">
+  <div *ngFor="let a of assets" class="asset-card" [class]="a.status"
+       [routerLink]="['/assets', a.id]">
+    <div class="asset-name">{{a.name}}</div>
+    <div class="asset-type">{{a.assetType}}</div>
+    <div class="health" [style.color]="healthColor(a.healthScore)">
+      {{a.healthScore | number:'1.0-0'}}%
+    </div>
+    <div class="rul" *ngIf="a.rulDays">RUL: {{a.rulDays}} days</div>
+    <span class="badge" [class]="a.status">{{a.status | uppercase}}</span>
+  </div>
+</div>

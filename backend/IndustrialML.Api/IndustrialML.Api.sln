@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IndustrialML.Api", "IndustrialML.Api.csproj", "{8886D0A5-55E5-CFA6-AEB2-BAFE785C8C92}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8886D0A5-55E5-CFA6-AEB2-BAFE785C8C92}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8886D0A5-55E5-CFA6-AEB2-BAFE785C8C92}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8886D0A5-55E5-CFA6-AEB2-BAFE785C8C92}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8886D0A5-55E5-CFA6-AEB2-BAFE785C8C92}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {EC8B5821-283C-4327-8B41-53CF7F804331}
+	EndGlobalSection
+EndGlobal

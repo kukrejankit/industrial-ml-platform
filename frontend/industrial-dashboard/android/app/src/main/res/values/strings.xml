@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Industrial ML</string>
+    <string name="title_activity_main">Industrial ML</string>
+    <string name="package_name">com.industrialml.app</string>
+    <string name="custom_url_scheme">com.industrialml.app</string>
+</resources>
