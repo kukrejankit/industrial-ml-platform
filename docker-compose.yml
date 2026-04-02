@@ -1,0 +1,38 @@
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE:      industrial_ml
+      MYSQL_USER:          mlapp
+      MYSQL_PASSWORD:      YourSecurePass123!
+    ports: ["3306:3306"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/001_initial_schema.sql:/docker-entrypoint-initdb.d/init.sql
+
+  api:
+    build: ./backend/IndustrialML.Api
+    ports: ["5001:80"]
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=mysql;Database=industrial_ml;User=mlapp;Password=YourSecurePass123!;
+      - Jwt__Key=YourSuperSecretKeyAtLeast32CharsLong!
+      - MlService__BaseUrl=http://ml:8001
+    depends_on: [mysql]
+
+  ml:
+    build: ./ml
+    ports: ["8001:8001"]
+    volumes: [./ml/saved_models:/app/saved_models]
+
+  frontend:
+    build: ./frontend/industrial-dashboard
+    ports: ["4200:80"]
+    depends_on: [api]
+
+volumes:
+  mysql_data:
+
+# Run with: docker-compose up --build
+# Open:     http://localhost:4200

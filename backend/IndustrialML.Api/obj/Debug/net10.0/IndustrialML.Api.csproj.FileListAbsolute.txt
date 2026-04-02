@@ -115,3 +115,4 @@ C:\Testrepo\backend\IndustrialML.Api\obj\Debug\net10.0\IndustrialML.Api.pdb
 C:\Testrepo\backend\IndustrialML.Api\obj\Debug\net10.0\IndustrialML.Api.genruntimeconfig.cache
 C:\Testrepo\backend\IndustrialML.Api\obj\Debug\net10.0\ref\IndustrialML.Api.dll
 C:\Testrepo\backend\IndustrialML.Api\bin\Debug\net10.0\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Testrepo\backend\IndustrialML.Api\obj\Debug\net10.0\IndustrialML.Api.sourcelink.json
