@@ -141,8 +141,10 @@ public class ReadingsController : ControllerBase {
                 readings = historicalReadings
             };
 
+            var mlBaseUrl = Environment.GetEnvironmentVariable("MlService__BaseUrl")
+                    ?? "https://industrial-ml-service.azurewebsites.net/predict/anomaly";
             var response = await client.PostAsJsonAsync(
-                "http://localhost:8001/predict/anomaly", payload );
+                        $"{mlBaseUrl}/predict/anomaly", payload);
 
             Console.WriteLine(
                 $"Asset {assetId} ML response: {response.StatusCode}");

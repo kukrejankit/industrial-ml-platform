@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("IndustrialML.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cfd1dca082f53d5411f695c59f19e6f8e1c724da")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+96482f019446315fb918e8b978117666ce52c91b")]
 [assembly: System.Reflection.AssemblyProductAttribute("IndustrialML.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("IndustrialML.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

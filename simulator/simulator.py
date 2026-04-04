@@ -1,7 +1,7 @@
 import numpy as np, requests, time
 from datetime import datetime, timedelta
 
-API = "http://localhost:5208/api/readings"
+API = "https://industrial-ml-api.azurewebsites.net/api/readings"
 
 # Define tags for all 4 assets
 # Format: asset_id -> {tag_id: config}

@@ -16,7 +16,8 @@ public class MlClientService {
     public MlClientService(IHttpClientFactory f, AppDbContext db,
         IHubContext<SensorHub> hub, IConfiguration cfg) {
         _http = f.CreateClient(); _db = db; _hub = hub;
-        _mlBase = cfg["MlService:BaseUrl"]!;
+        _mlBase = cfg["MlService:BaseUrl"] ??
+                  "http://localhost:8001";
     }
 
     public async Task RunPredictions(int assetId) {

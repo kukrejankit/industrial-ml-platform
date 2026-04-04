@@ -116,3 +116,12 @@ C:\Testrepo\backend\IndustrialML.Api\obj\Debug\net10.0\IndustrialML.Api.genrunti
 C:\Testrepo\backend\IndustrialML.Api\obj\Debug\net10.0\ref\IndustrialML.Api.dll
 C:\Testrepo\backend\IndustrialML.Api\bin\Debug\net10.0\Microsoft.Bcl.AsyncInterfaces.dll
 C:\Testrepo\backend\IndustrialML.Api\obj\Debug\net10.0\IndustrialML.Api.sourcelink.json
+C:\Testrepo\backend\IndustrialML.Api\bin\Debug\net10.0\publish\web.config
+C:\Testrepo\backend\IndustrialML.Api\bin\Debug\net10.0\publish\appsettings.Development.json
+C:\Testrepo\backend\IndustrialML.Api\bin\Debug\net10.0\publish\appsettings.json
+C:\Testrepo\backend\IndustrialML.Api\bin\Debug\net10.0\publish\IndustrialML.Api.deps.json
+C:\Testrepo\backend\IndustrialML.Api\bin\Debug\net10.0\publish\IndustrialML.Api.runtimeconfig.json
+C:\Testrepo\backend\IndustrialML.Api\bin\Debug\net10.0\publish\IndustrialML.Api.staticwebassets.endpoints.json
+C:\Testrepo\backend\IndustrialML.Api\bin\Debug\net10.0\AutoMapper.dll
+C:\Testrepo\backend\IndustrialML.Api\bin\Debug\net10.0\AutoMapper.Extensions.Microsoft.DependencyInjection.dll
+C:\Testrepo\backend\IndustrialML.Api\bin\Debug\net10.0\EFCore.NamingConventions.dll

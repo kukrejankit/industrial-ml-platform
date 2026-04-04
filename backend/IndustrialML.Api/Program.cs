@@ -24,9 +24,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddCors(o => o.AddPolicy("Angular",
-    p => p.WithOrigins("http://localhost:4200")
-          .AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
+builder.Services.AddCors(opt => opt.AddPolicy("AllowAngular",
+    p => p.SetIsOriginAllowed(origin =>
+        origin.Contains("localhost") ||
+        origin.Contains("industrialmlfrontend.z13.web.core.windows.net") ||
+        origin.Contains("industrial-ml-api.azurewebsites.net")
+    )
+    .AllowAnyHeader()
+    .AllowAnyMethod()
+    .AllowCredentials()));
 
 builder.Services.AddSignalR();
 builder.Services.AddHttpClient();
