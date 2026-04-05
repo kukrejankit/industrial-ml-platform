@@ -28,6 +28,7 @@ builder.Services.AddCors(opt => opt.AddPolicy("AllowAngular",
     p => p.SetIsOriginAllowed(origin =>
         origin.Contains("localhost") ||
         origin.Contains("industrialmlfrontend.z13.web.core.windows.net") ||
+        origin.Contains("azurestaticapps.net") ||
         origin.Contains("industrial-ml-api.azurewebsites.net")
     )
     .AllowAnyHeader()
