@@ -11,5 +11,11 @@
       "/*.woff2",
       "/assets/*"
     ]
+  },
+  "globalHeaders": {
+    "cache-control": "no-cache"
+  },
+  "mimeTypes": {
+    ".json": "application/json"
   }
 }
