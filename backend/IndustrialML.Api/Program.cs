@@ -43,7 +43,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<MlClientService>();
 var app = builder.Build();
 app.UseSwagger(); app.UseSwaggerUI();
-app.UseCors("Angular");
+app.UseCors("AllowAngular");
 app.UseAuthentication(); app.UseAuthorization();
 app.MapControllers();
 app.MapHub<SensorHub>("/hubs/sensors");

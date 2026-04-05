@@ -1,5 +1,5 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:5208/api',
-  hubUrl: 'http://localhost:5208/hubs/sensors'
+  apiUrl: 'https://industrial-ml-api.azurewebsites.net/api',
+  hubUrl: 'https://industrial-ml-api.azurewebsites.net/hubs/sensors'
 };

@@ -1,0 +1,147 @@
+<div class="interview-container">
+
+  <!-- Header -->
+  <div class="interview-header">
+    <div class="header-content">
+      <div class="header-icon">🎯</div>
+      <div>
+        <h1>Feature Value Evaluation</h1>
+        <p>AI-powered interview to assess feature value and effort</p>
+      </div>
+    </div>
+    <div class="header-actions" *ngIf="started">
+      <button class="btn-secondary" (click)="exportTranscript()">Export Transcript</button>
+      <button class="btn-secondary" (click)="newInterview()">New Interview</button>
+    </div>
+  </div>
+
+  <!-- Start Screen -->
+  <div class="start-screen" *ngIf="!started">
+    <div class="start-card">
+      <h2>Start a New Feature Evaluation</h2>
+      <p>The AI will guide you through 7 questions to score your feature for the Value Matrix.</p>
+
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" [(ngModel)]="interviewerName" placeholder="e.g. Product Owner name" class="form-input" />
+      </div>
+      <div class="form-group">
+        <label>Feature Name</label>
+        <input type="text" [(ngModel)]="featureName" placeholder="e.g. SplitPay Native" class="form-input" />
+      </div>
+
+      <button class="btn-primary" (click)="startInterview()" [disabled]="!interviewerName || !featureName">
+        Start Interview
+      </button>
+
+      <div class="info-boxes">
+        <div class="info-box">
+          <div class="info-icon">📊</div>
+          <div class="info-text">
+            <strong>7 questions</strong>
+            <span>Revenue model, pain, competitive gap, engineering effort, and strategic category</span>
+          </div>
+        </div>
+        <div class="info-box">
+          <div class="info-icon">⏱</div>
+          <div class="info-text">
+            <strong>~5 minutes</strong>
+            <span>Quick MVP evaluation covering the most important dimensions</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interview Area (two columns) -->
+  <div class="interview-body" *ngIf="started">
+
+    <!-- Progress Panel -->
+    <div class="progress-panel">
+      <div class="progress-header">
+        <span class="progress-title">Progress</span>
+        <span class="progress-count">{{ answeredCount }}/{{ progressFields.length }}</span>
+      </div>
+
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" [style.width.%]="progressPercent"></div>
+      </div>
+
+      <div class="field-list">
+        <div
+          *ngFor="let field of progressFields"
+          class="field-card"
+          [class.answered]="field.value !== null">
+          <div class="field-status">
+            <span class="status-dot"></span>
+          </div>
+          <div class="field-info">
+            <div class="field-label">{{ field.label }}</div>
+            <div class="field-desc" *ngIf="field.value === null">{{ field.description }}</div>
+            <div class="field-value" *ngIf="field.value !== null">{{ field.value }}</div>
+          </div>
+          <div class="field-check" *ngIf="field.value !== null">✓</div>
+        </div>
+      </div>
+
+      <div class="complete-badge" *ngIf="interviewComplete">
+        ✅ All fields collected!
+      </div>
+    </div>
+
+    <!-- Chat Panel -->
+    <div class="chat-panel">
+
+      <div class="completion-banner" *ngIf="interviewComplete">
+        <span>✅ Interview complete! All data has been collected.</span>
+        <div class="completion-actions">
+          <button class="btn-primary" (click)="exportTranscript()">Export Transcript</button>
+          <button class="btn-secondary-green" (click)="newInterview()">New Interview</button>
+        </div>
+      </div>
+
+      <div class="chat-messages" #chatContainer>
+        <div
+          *ngFor="let msg of messages"
+          class="message"
+          [class.user-message]="msg.role === 'user'"
+          [class.ai-message]="msg.role === 'model'">
+          <div class="message-avatar">
+            {{ msg.role === 'user' ? interviewerName[0]?.toUpperCase() : '🤖' }}
+          </div>
+          <div class="message-content">
+            <div class="message-sender">
+              {{ msg.role === 'user' ? interviewerName : 'AI Interviewer' }}
+            </div>
+            <div class="message-text" [innerHTML]="msg.text"></div>
+          </div>
+        </div>
+
+        <div class="message ai-message" *ngIf="isLoading">
+          <div class="message-avatar">🤖</div>
+          <div class="message-content">
+            <div class="message-sender">AI Interviewer</div>
+            <div class="typing-indicator">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-input-area" *ngIf="!interviewComplete">
+        <textarea
+          [(ngModel)]="userInput"
+          (keydown)="onKeyPress($event)"
+          placeholder="Type your answer here... (Press Enter to send)"
+          class="chat-input"
+          rows="2">
+        </textarea>
+        <button class="send-btn" (click)="sendMessage()" [disabled]="!userInput.trim() || isLoading">
+          Send
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</div>

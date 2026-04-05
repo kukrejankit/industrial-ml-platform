@@ -16,6 +16,7 @@ ml/saved_models/*.pkl
 .env
 *.env
 appsettings.Development.json
+gemini-proxy.js
 
 # OS
 .DS_Store

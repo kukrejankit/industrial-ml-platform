@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { RouterOutlet, Router } from '@angular/router';
 
 @Component({
   selector: 'app-root',
@@ -7,7 +7,11 @@ import { RouterOutlet } from '@angular/router';
   imports: [RouterOutlet],
   templateUrl: './app.html'
 })
-
 export class AppComponent {
+  private router = inject(Router);
   title = 'industrial-dashboard';
+
+  navigate(path: string) {
+    this.router.navigate([path]);
+  }
 }
