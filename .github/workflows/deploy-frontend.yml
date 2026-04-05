@@ -26,6 +26,9 @@ jobs:
         working-directory: frontend/industrial-dashboard
         run: npm run build -- --configuration=production
 
+      - name: List build output
+        run: ls frontend/industrial-dashboard/dist/industrial-dashboard/browser/
+
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
