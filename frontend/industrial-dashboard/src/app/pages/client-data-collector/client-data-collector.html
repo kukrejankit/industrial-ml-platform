@@ -1,0 +1,248 @@
+<div class="cdc-container">
+
+  <!-- Header -->
+  <div class="cdc-header">
+    <div class="header-left">
+      <div class="header-icon">📋</div>
+      <div>
+        <h1>Client Data Collector</h1>
+        <p>Design custom forms and send them to your customers</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="phase-steps" *ngIf="started">
+        <span class="step" [class.active]="phase === CollectorPhase.SetupChat" [class.done]="phase > CollectorPhase.SetupChat">
+          <span class="step-num">1</span> Design
+        </span>
+        <span class="step-arrow">›</span>
+        <span class="step" [class.active]="phase === CollectorPhase.FormPreview" [class.done]="phase > CollectorPhase.FormPreview">
+          <span class="step-num">2</span> Review
+        </span>
+        <span class="step-arrow">›</span>
+        <span class="step" [class.active]="phase === CollectorPhase.Send" [class.done]="phase === CollectorPhase.Sent">
+          <span class="step-num">3</span> Send
+        </span>
+      </div>
+      <button class="btn-secondary" (click)="newCollection()" *ngIf="started">Start Over</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- PHASE 1 — Start Screen                                  -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="start-screen" *ngIf="!started && phase === CollectorPhase.SetupChat">
+    <div class="start-card">
+      <h2>Design a New Data Collection Form</h2>
+      <p>Our AI will help you design the perfect form for your customers through a short conversation.</p>
+
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" [(ngModel)]="interviewerName" placeholder="e.g. Jane Smith" class="form-input" />
+      </div>
+
+      <button class="btn-primary" (click)="startSetup()" [disabled]="!interviewerName.trim()">
+        Start Designing →
+      </button>
+
+      <div class="info-boxes">
+        <div class="info-box">
+          <div class="info-icon">💬</div>
+          <div class="info-text">
+            <strong>Step 1: Describe your needs</strong>
+            <span>Chat with AI to describe what data you want to collect from customers</span>
+          </div>
+        </div>
+        <div class="info-box">
+          <div class="info-icon">✅</div>
+          <div class="info-text">
+            <strong>Step 2: Review &amp; approve</strong>
+            <span>AI generates a form — approve it or go back to refine</span>
+          </div>
+        </div>
+        <div class="info-box">
+          <div class="info-icon">📧</div>
+          <div class="info-text">
+            <strong>Step 3: Send to customer</strong>
+            <span>Share a unique link — customer fills it out and can download their responses</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- PHASE 1 — Chat Interface                                -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="cdc-body" *ngIf="started && phase === CollectorPhase.SetupChat">
+
+    <!-- Left: Requirements Panel -->
+    <div class="requirements-panel">
+      <div class="panel-heading">
+        <span class="panel-title">Requirements</span>
+        <span class="panel-count">{{ capturedCount }}/4</span>
+      </div>
+
+      <div class="req-bar-wrap">
+        <div class="req-bar-fill" [style.width.%]="(capturedCount / 4) * 100"></div>
+      </div>
+
+      <div class="req-list">
+        <div *ngFor="let field of progressFields" class="req-field" [class.filled]="field.value !== null">
+          <div class="req-dot"></div>
+          <div class="req-info">
+            <div class="req-label">{{ field.label }}</div>
+            <div class="req-hint" *ngIf="field.value === null">{{ field.description }}</div>
+            <div class="req-value" *ngIf="field.value !== null">{{ field.value }}</div>
+          </div>
+          <div class="req-check" *ngIf="field.value !== null">✓</div>
+        </div>
+      </div>
+
+      <div class="generate-section">
+        <div class="generate-hint" *ngIf="!canGenerateForm && !isGeneratingForm">
+          Define the purpose and key fields to unlock form generation.
+        </div>
+        <button class="btn-generate" (click)="generateForm()" [disabled]="!canGenerateForm">
+          <span *ngIf="!isGeneratingForm">✨ Generate Form</span>
+          <span *ngIf="isGeneratingForm" class="generating-text">
+            <span class="spinner"></span> Generating…
+          </span>
+        </button>
+        <div class="parse-error" *ngIf="formParseError">
+          Generation failed. Please try again.
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Chat Panel -->
+    <div class="chat-panel">
+      <div class="chat-messages" #chatContainer>
+        <div
+          *ngFor="let msg of messages"
+          class="message"
+          [class.user-message]="msg.role === 'user'"
+          [class.ai-message]="msg.role === 'model'">
+          <div class="message-avatar">
+            {{ msg.role === 'user' ? interviewerName[0]?.toUpperCase() : '🤖' }}
+          </div>
+          <div class="message-content">
+            <div class="message-sender">{{ msg.role === 'user' ? interviewerName : 'AI Assistant' }}</div>
+            <div class="message-text" [innerHTML]="msg.text"></div>
+          </div>
+        </div>
+
+        <div class="message ai-message" *ngIf="isLoading">
+          <div class="message-avatar">🤖</div>
+          <div class="message-content">
+            <div class="message-sender">AI Assistant</div>
+            <div class="typing-indicator"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-input-area">
+        <textarea
+          [(ngModel)]="userInput"
+          (keydown)="onKeyPress($event)"
+          placeholder="Type your answer… (Enter to send)"
+          class="chat-input"
+          rows="2">
+        </textarea>
+        <button class="send-btn" (click)="sendMessage()" [disabled]="!userInput.trim() || isLoading">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- PHASE 2 — Form Preview                                  -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="preview-phase" *ngIf="phase === CollectorPhase.FormPreview && generatedForm">
+    <div class="preview-container">
+
+      <div class="preview-top-bar">
+        <div class="preview-title-block">
+          <h2>{{ generatedForm.title }}</h2>
+          <p>{{ generatedForm.description }}</p>
+        </div>
+        <div class="preview-actions">
+          <button class="btn-modify" (click)="rejectForm()">✗ Modify</button>
+          <button class="btn-approve" (click)="approveForm()">✓ Approve &amp; Continue</button>
+        </div>
+      </div>
+
+      <div class="preview-note">
+        Review the generated form below. Approve to proceed, or Modify to refine the requirements.
+      </div>
+
+      <div class="questions-preview">
+        <div *ngFor="let q of generatedForm.questions; let i = index" class="preview-question-card">
+          <div class="pq-number">{{ i + 1 }}</div>
+          <div class="pq-body">
+            <div class="pq-label">
+              {{ q.label }}
+              <span class="required-badge" *ngIf="q.required">Required</span>
+            </div>
+            <div class="pq-meta">
+              <span class="type-chip">{{ typeLabels[q.type] }}</span>
+              <span class="options-preview" *ngIf="q.options && q.options.length > 0">
+                <span *ngFor="let opt of q.options" class="opt-chip">{{ opt }}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="preview-footer">
+        <button class="btn-modify" (click)="rejectForm()">✗ Modify Form</button>
+        <button class="btn-approve" (click)="approveForm()">✓ Approve &amp; Send to Customer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- PHASE 3 — Send to Customer                             -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="action-screen" *ngIf="phase === CollectorPhase.Send">
+    <div class="action-card">
+      <div class="action-icon">📧</div>
+      <h2>Send Form to Customer</h2>
+      <p>Enter the customer's email. We'll generate a unique link for <strong>{{ generatedForm?.title }}</strong>.</p>
+
+      <div class="form-group">
+        <label>Customer Email Address</label>
+        <input type="email" [(ngModel)]="customerEmail" placeholder="customer@example.com" class="form-input" />
+      </div>
+
+      <button class="btn-primary" (click)="sendToCustomer()" [disabled]="!customerEmail.trim()">
+        Generate Link →
+      </button>
+      <button class="btn-text" (click)="phase = CollectorPhase.FormPreview">← Back to Preview</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- PHASE 4 — Sent / Link Ready                            -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="action-screen" *ngIf="phase === CollectorPhase.Sent">
+    <div class="action-card sent-card">
+      <div class="action-icon">✅</div>
+      <h2>Form Ready!</h2>
+      <p>Share this unique link with <strong>{{ customerEmail }}</strong>.</p>
+
+      <div class="link-box">
+        <span class="link-text">{{ generatedLink }}</span>
+        <button class="copy-btn" (click)="copyLink()">{{ linkCopied ? 'Copied!' : 'Copy' }}</button>
+      </div>
+
+      <div class="sent-actions">
+        <a [href]="mailtoHref" class="btn-mailto">📧 Open Email Client</a>
+        <button class="btn-primary-sm" (click)="newCollection()">+ New Form</button>
+      </div>
+
+      <div class="sent-note">
+        The customer will fill out the form at that link and can download their responses as a CSV/Excel file.
+      </div>
+    </div>
+  </div>
+
+</div>
