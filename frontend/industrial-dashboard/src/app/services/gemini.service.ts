@@ -34,6 +34,23 @@ RULES:
 
   constructor(private http: HttpClient) {}
 
+  sendMessageWithSystemPrompt(messages: Message[], systemPrompt: string): Observable<any> {
+    const recent = messages.slice(-10);
+    const body = {
+      model: 'llama-3.1-8b-instant',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...recent.map(m => ({
+          role: m.role === 'model' ? 'assistant' : 'user',
+          content: m.text
+        }))
+      ],
+      temperature: 0.7,
+      max_tokens: 2048
+    };
+    return this.http.post(this.proxyUrl, body);
+  }
+
   sendMessage(messages: Message[], capturedFields: Record<string, string>): Observable<any> {
     const recent = messages.slice(-6);
 
