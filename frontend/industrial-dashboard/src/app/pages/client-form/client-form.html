@@ -1,0 +1,165 @@
+<div class="cf-container">
+
+  <!-- Not Found -->
+  <div class="not-found-screen" *ngIf="notFound">
+    <div class="not-found-card">
+      <div class="nf-icon">🔍</div>
+      <h2>Form Not Found</h2>
+      <p>This link may have expired or is invalid. Please contact the sender for a new link.</p>
+    </div>
+  </div>
+
+  <!-- Form -->
+  <ng-container *ngIf="!notFound && form">
+
+    <!-- Header -->
+    <div class="cf-header">
+      <div class="cf-header-inner">
+        <div class="header-icon">📋</div>
+        <div>
+          <h1>{{ form.title }}</h1>
+          <p>{{ form.description }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submitted -->
+    <div class="submitted-screen" *ngIf="submitted">
+      <div class="submitted-card">
+        <div class="submitted-icon">🎉</div>
+        <h2>Thank You!</h2>
+        <p>Your responses have been submitted successfully.</p>
+        <button class="btn-download" (click)="downloadCsv()">
+          ⬇ Download Responses (CSV / Excel)
+        </button>
+      </div>
+    </div>
+
+    <!-- Form Body -->
+    <div class="cf-body" *ngIf="!submitted">
+
+      <!-- Progress Panel (left) -->
+      <div class="progress-panel">
+        <div class="progress-header">
+          <span class="progress-title">Progress</span>
+          <span class="progress-count">{{ answeredCount }}/{{ totalQuestions }}</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" [style.width.%]="progressPercent"></div>
+        </div>
+
+        <div class="question-list">
+          <div
+            *ngFor="let q of form.questions; let i = index"
+            class="ql-item"
+            [class.answered]="isAnswered(q)">
+            <span class="ql-num">{{ i + 1 }}</span>
+            <span class="ql-label">{{ q.label }}</span>
+            <span class="ql-check" *ngIf="isAnswered(q)">✓</span>
+            <span class="ql-req" *ngIf="q.required && !isAnswered(q)">*</span>
+          </div>
+        </div>
+
+        <div class="progress-complete" *ngIf="answeredCount === totalQuestions">
+          ✅ All questions answered!
+        </div>
+      </div>
+
+      <!-- Form Questions (right) -->
+      <div class="form-panel">
+        <div class="questions-list">
+
+          <div *ngFor="let q of form.questions; let i = index" class="question-block">
+            <label class="q-label">
+              <span class="q-num-badge">{{ i + 1 }}</span>
+              {{ q.label }}
+              <span class="req-star" *ngIf="q.required">*</span>
+            </label>
+
+            <!-- text -->
+            <input
+              *ngIf="q.type === 'text'"
+              type="text"
+              [(ngModel)]="formData[q.id]"
+              [placeholder]="q.placeholder || ''"
+              class="answer-input" />
+
+            <!-- textarea -->
+            <textarea
+              *ngIf="q.type === 'textarea'"
+              [(ngModel)]="formData[q.id]"
+              [placeholder]="q.placeholder || ''"
+              class="answer-textarea"
+              rows="4">
+            </textarea>
+
+            <!-- number -->
+            <input
+              *ngIf="q.type === 'number'"
+              type="number"
+              [(ngModel)]="formData[q.id]"
+              [placeholder]="q.placeholder || ''"
+              class="answer-input" />
+
+            <!-- date -->
+            <input
+              *ngIf="q.type === 'date'"
+              type="date"
+              [(ngModel)]="formData[q.id]"
+              class="answer-input" />
+
+            <!-- email -->
+            <input
+              *ngIf="q.type === 'email'"
+              type="email"
+              [(ngModel)]="formData[q.id]"
+              [placeholder]="q.placeholder || 'you@example.com'"
+              class="answer-input" />
+
+            <!-- phone -->
+            <input
+              *ngIf="q.type === 'phone'"
+              type="tel"
+              [(ngModel)]="formData[q.id]"
+              [placeholder]="q.placeholder || '+1 (555) 000-0000'"
+              class="answer-input" />
+
+            <!-- select -->
+            <select *ngIf="q.type === 'select'" [(ngModel)]="formData[q.id]" class="answer-select">
+              <option value="">— Select an option —</option>
+              <option *ngFor="let opt of q.options" [value]="opt">{{ opt }}</option>
+            </select>
+
+            <!-- radio -->
+            <div *ngIf="q.type === 'radio'" class="radio-group">
+              <label *ngFor="let opt of q.options" class="radio-option">
+                <input type="radio" [name]="'q_' + q.id" [value]="opt" [(ngModel)]="formData[q.id]" />
+                <span class="radio-label">{{ opt }}</span>
+              </label>
+            </div>
+
+            <!-- checkbox -->
+            <div *ngIf="q.type === 'checkbox'" class="checkbox-group">
+              <label *ngFor="let opt of q.options" class="checkbox-option">
+                <input
+                  type="checkbox"
+                  [checked]="isCheckboxChecked(q.id, opt)"
+                  (change)="toggleCheckbox(q.id, opt)" />
+                <span class="checkbox-label">{{ opt }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-footer">
+          <div class="req-note">* Required fields</div>
+          <button class="btn-submit" (click)="submitForm()" [disabled]="!allRequiredAnswered">
+            Submit →
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </ng-container>
+
+</div>
