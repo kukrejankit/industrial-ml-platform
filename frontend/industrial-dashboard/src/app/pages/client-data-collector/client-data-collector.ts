@@ -200,7 +200,8 @@ OUTPUT RULES:
 2. Generate between 4 and 12 questions.
 3. Use "email" for email, "phone" for phone, "date" for dates, "number" for quantities, "select" or "radio" for categorical choices (≤6 options), "textarea" for open-ended, "text" for short answers.
 4. Mark fields as required:true when mentioned as mandatory or clearly essential.
-5. Include "options" array ONLY for select, radio, or checkbox types.
+5. CRITICAL: Every question with type "select", "radio", or "checkbox" MUST include an "options" array with at least 3 meaningful, specific string values. Never use these types without options. Example: "type": "select", "options": ["Option A", "Option B", "Option C"].
+6. Never generate a "select", "radio", or "checkbox" question without a populated "options" array.
 
 REQUIRED JSON SCHEMA:
 {
@@ -212,7 +213,8 @@ REQUIRED JSON SCHEMA:
       "label": "question text",
       "type": "text|textarea|email|phone|number|date|select|radio|checkbox",
       "required": true,
-      "placeholder": "hint text (omit for select/radio/checkbox)"
+      "placeholder": "hint text (omit for select/radio/checkbox)",
+      "options": ["only for select/radio/checkbox — always include at least 3 values"]
     }
   ]
 }`;
