@@ -28,14 +28,11 @@
       <div class="submitted-card">
         <div class="submitted-icon">🎉</div>
         <h2>Thank You!</h2>
-        <p>Your responses have been submitted successfully.</p>
-        <button class="btn-download" (click)="downloadCsv()">
-          ⬇ Download Responses (CSV / Excel)
-        </button>
+        <p>Your responses have been recorded and sent to the requesting team.</p>
       </div>
     </div>
 
-    <!-- Form Body -->
+    <!-- Chat Body -->
     <div class="cf-body" *ngIf="!submitted">
 
       <!-- Progress Panel (left) -->
@@ -63,99 +60,53 @@
         <div class="progress-complete" *ngIf="answeredCount === totalQuestions">
           ✅ All questions answered!
         </div>
+
+        <div class="submit-section">
+          <button class="btn-submit" (click)="submitForm()" [disabled]="!allRequiredAnswered || isSendingEmail">
+            <span *ngIf="!isSendingEmail">Submit →</span>
+            <span *ngIf="isSendingEmail">Sending…</span>
+          </button>
+          <div class="submit-hint" *ngIf="!allRequiredAnswered">
+            Answer all required (*) fields to submit.
+          </div>
+        </div>
       </div>
 
-      <!-- Form Questions (right) -->
-      <div class="form-panel">
-        <div class="questions-list">
-
-          <div *ngFor="let q of form.questions; let i = index" class="question-block">
-            <label class="q-label">
-              <span class="q-num-badge">{{ i + 1 }}</span>
-              {{ q.label }}
-              <span class="req-star" *ngIf="q.required">*</span>
-            </label>
-
-            <!-- text -->
-            <input
-              *ngIf="q.type === 'text'"
-              type="text"
-              [(ngModel)]="formData[q.id]"
-              [placeholder]="q.placeholder || ''"
-              class="answer-input" />
-
-            <!-- textarea -->
-            <textarea
-              *ngIf="q.type === 'textarea'"
-              [(ngModel)]="formData[q.id]"
-              [placeholder]="q.placeholder || ''"
-              class="answer-textarea"
-              rows="4">
-            </textarea>
-
-            <!-- number -->
-            <input
-              *ngIf="q.type === 'number'"
-              type="number"
-              [(ngModel)]="formData[q.id]"
-              [placeholder]="q.placeholder || ''"
-              class="answer-input" />
-
-            <!-- date -->
-            <input
-              *ngIf="q.type === 'date'"
-              type="date"
-              [(ngModel)]="formData[q.id]"
-              class="answer-input" />
-
-            <!-- email -->
-            <input
-              *ngIf="q.type === 'email'"
-              type="email"
-              [(ngModel)]="formData[q.id]"
-              [placeholder]="q.placeholder || 'you@example.com'"
-              class="answer-input" />
-
-            <!-- phone -->
-            <input
-              *ngIf="q.type === 'phone'"
-              type="tel"
-              [(ngModel)]="formData[q.id]"
-              [placeholder]="q.placeholder || '+1 (555) 000-0000'"
-              class="answer-input" />
-
-            <!-- select -->
-            <select *ngIf="q.type === 'select'" [(ngModel)]="formData[q.id]" class="answer-select">
-              <option value="">— Select an option —</option>
-              <option *ngFor="let opt of q.options" [value]="opt">{{ opt }}</option>
-            </select>
-
-            <!-- radio -->
-            <div *ngIf="q.type === 'radio'" class="radio-group">
-              <label *ngFor="let opt of q.options" class="radio-option">
-                <input type="radio" [name]="'q_' + q.id" [value]="opt" [(ngModel)]="formData[q.id]" />
-                <span class="radio-label">{{ opt }}</span>
-              </label>
+      <!-- Chat Panel (right) -->
+      <div class="chat-panel">
+        <div class="chat-messages" #chatContainer>
+          <div
+            *ngFor="let msg of messages"
+            class="message"
+            [class.user-message]="msg.role === 'user'"
+            [class.ai-message]="msg.role === 'model'">
+            <div class="message-avatar">
+              {{ msg.role === 'user' ? '👤' : '🤖' }}
             </div>
+            <div class="message-content">
+              <div class="message-sender">{{ msg.role === 'user' ? 'You' : 'AI Assistant' }}</div>
+              <div class="message-text" [innerHTML]="msg.text"></div>
+            </div>
+          </div>
 
-            <!-- checkbox -->
-            <div *ngIf="q.type === 'checkbox'" class="checkbox-group">
-              <label *ngFor="let opt of q.options" class="checkbox-option">
-                <input
-                  type="checkbox"
-                  [checked]="isCheckboxChecked(q.id, opt)"
-                  (change)="toggleCheckbox(q.id, opt)" />
-                <span class="checkbox-label">{{ opt }}</span>
-              </label>
+          <div class="message ai-message" *ngIf="isLoading">
+            <div class="message-avatar">🤖</div>
+            <div class="message-content">
+              <div class="message-sender">AI Assistant</div>
+              <div class="typing-indicator"><span></span><span></span><span></span></div>
             </div>
           </div>
         </div>
 
-        <div class="form-footer">
-          <div class="req-note">* Required fields</div>
-          <button class="btn-submit" (click)="submitForm()" [disabled]="!allRequiredAnswered">
-            Submit →
-          </button>
+        <div class="chat-input-area">
+          <textarea
+            [(ngModel)]="userInput"
+            (keydown)="onKeyPress($event)"
+            placeholder="Type your answer… (Enter to send)"
+            class="chat-input"
+            rows="2">
+          </textarea>
+          <button class="send-btn" (click)="sendMessage()" [disabled]="!userInput.trim() || isLoading">Send</button>
         </div>
       </div>
 
