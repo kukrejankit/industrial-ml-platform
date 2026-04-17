@@ -476,6 +476,34 @@
   30%            { transform: translateY(-6px); }
 }
 
+/* ── Stuck / retry banner ───────────────────────────────── */
+.stuck-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #92400e;
+  align-self: flex-start;
+  max-width: 85%;
+}
+
+.retry-btn {
+  background: #f97316;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  &:hover { background: #ea6c0a; }
+}
+
 /* ── Chat input area ─────────────────────────────────────── */
 .chat-input-area {
   display: flex;
