@@ -23,6 +23,7 @@ export interface FormDefinition {
 export interface StoredForm {
   id: string;
   createdAt: string;
+  requesterEmail?: string;
   form: FormDefinition;
 }
 
@@ -62,6 +63,7 @@ export class ClientDataCollectorComponent implements OnInit, AfterViewChecked {
   isGeneratingForm = false;
   formParseError = false;
   interviewerName = '';
+  interviewerEmail = '';
   started = false;
 
   progressFields: ProgressField[] = [
@@ -131,7 +133,7 @@ RULES:
   }
 
   startSetup() {
-    if (!this.interviewerName.trim()) return;
+    if (!this.interviewerName.trim() || !this.interviewerEmail.trim()) return;
     this.started = true;
     const intro = `Hi, I'm ${this.interviewerName}. I need help designing a data collection form for my customers.`;
     this.messages.push({ role: 'user', text: intro });
@@ -268,6 +270,7 @@ REQUIRED JSON SCHEMA:
     const stored: StoredForm = {
       id,
       createdAt: new Date().toISOString(),
+      requesterEmail: this.interviewerEmail,
       form: this.generatedForm
     };
     const forms: StoredForm[] = JSON.parse(localStorage.getItem('cdc_forms') || '[]');
@@ -301,6 +304,7 @@ REQUIRED JSON SCHEMA:
     this.isGeneratingForm = false;
     this.formParseError = false;
     this.interviewerName = '';
+    this.interviewerEmail = '';
     this.started = false;
     this.progressFields.forEach(f => f.value = null);
     this.generatedForm = null;
