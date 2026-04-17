@@ -1,15 +1,19 @@
-using Microsoft.AspNetCore.Mvc;
 using System.Net;
-using System.Net.Mail;
 using System.Text;
+using System.Text.Json;
 
 [ApiController]
 [Route("api/email")]
 public class EmailController : ControllerBase
 {
     private readonly IConfiguration _cfg;
+    private readonly IHttpClientFactory _httpFactory;
 
-    public EmailController(IConfiguration cfg) { _cfg = cfg; }
+    public EmailController(IConfiguration cfg, IHttpClientFactory httpFactory)
+    {
+        _cfg = cfg;
+        _httpFactory = httpFactory;
+    }
 
     [HttpPost("send-responses")]
     public async Task<IActionResult> SendResponses([FromBody] SendResponsesRequest req)
@@ -17,31 +21,42 @@ public class EmailController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.To))
             return BadRequest("Recipient email is required.");
 
-        var host     = _cfg["Smtp:Host"];
-        var port     = int.TryParse(_cfg["Smtp:Port"], out var p) ? p : 587;
-        var username = _cfg["Smtp:Username"];
-        var password = _cfg["Smtp:Password"];
-        var from     = _cfg["Smtp:From"] ?? username;
+        var apiKey = _cfg["SendGrid:ApiKey"];
+        var from   = _cfg["SendGrid:From"];
 
-        if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(username))
+        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(from))
             return StatusCode(503, "Email service is not configured.");
 
         var html = BuildEmailHtml(req);
 
-        using var client = new SmtpClient(host, port)
+        var payload = new
         {
-            EnableSsl   = true,
-            Credentials = new NetworkCredential(username, password)
+            personalizations = new[]
+            {
+                new { to = new[] { new { email = req.To } } }
+            },
+            from    = new { email = from },
+            subject = $"Form Responses: {req.FormTitle}",
+            content = new[]
+            {
+                new { type = "text/html", value = html }
+            }
         };
 
-        var message = new MailMessage(from!, req.To)
-        {
-            Subject    = $"Form Responses: {req.FormTitle}",
-            Body       = html,
-            IsBodyHtml = true
-        };
+        var client = _httpFactory.CreateClient();
+        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
 
-        await client.SendMailAsync(message);
+        var response = await client.PostAsync(
+            "https://api.sendgrid.com/v3/mail/send",
+            new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+        );
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var err = await response.Content.ReadAsStringAsync();
+            return StatusCode((int)response.StatusCode, err);
+        }
+
         return Ok();
     }
 
@@ -87,8 +102,8 @@ public class EmailController : ControllerBase
 
 public class SendResponsesRequest
 {
-    public string To           { get; set; } = "";
-    public string FormTitle    { get; set; } = "";
+    public string To        { get; set; } = "";
+    public string FormTitle { get; set; } = "";
     public List<ResponseRow> Responses { get; set; } = new();
 }
 
