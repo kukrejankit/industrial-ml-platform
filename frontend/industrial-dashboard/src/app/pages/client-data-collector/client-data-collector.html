@@ -40,7 +40,12 @@
         <input type="text" [(ngModel)]="interviewerName" placeholder="e.g. Jane Smith" class="form-input" />
       </div>
 
-      <button class="btn-primary" (click)="startSetup()" [disabled]="!interviewerName.trim()">
+      <div class="form-group">
+        <label>Your Email Address</label>
+        <input type="email" [(ngModel)]="interviewerEmail" placeholder="e.g. jane@company.com" class="form-input" />
+      </div>
+
+      <button class="btn-primary" (click)="startSetup()" [disabled]="!interviewerName.trim() || !interviewerEmail.trim()">
         Start Designing →
       </button>
 
