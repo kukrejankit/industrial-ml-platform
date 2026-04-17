@@ -89,12 +89,17 @@
             </div>
           </div>
 
-          <div class="message ai-message" *ngIf="isLoading">
+          <div class="message ai-message" *ngIf="isLoading && !isStuck">
             <div class="message-avatar">🤖</div>
             <div class="message-content">
               <div class="message-sender">AI Assistant</div>
               <div class="typing-indicator"><span></span><span></span><span></span></div>
             </div>
+          </div>
+
+          <div class="stuck-banner" *ngIf="isStuck">
+            <span>⚠ The AI took too long to respond.</span>
+            <button class="retry-btn" (click)="retryLastMessage()">↺ Retry</button>
           </div>
         </div>
 
@@ -106,7 +111,7 @@
             class="chat-input"
             rows="2">
           </textarea>
-          <button class="send-btn" (click)="sendMessage()" [disabled]="!userInput.trim() || isLoading">Send</button>
+          <button class="send-btn" (click)="sendMessage()" [disabled]="!userInput.trim()">Send</button>
         </div>
       </div>
 
