@@ -1,6 +1,8 @@
-import { Component, OnInit, inject, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
+import { timeout } from 'rxjs/operators';
 import { GeminiService, Message } from '../../services/gemini.service';
 
 export type QuestionType = 'text' | 'textarea' | 'email' | 'phone' | 'number' | 'date' | 'select' | 'radio' | 'checkbox';
@@ -48,7 +50,7 @@ interface ProgressField {
   templateUrl: './client-data-collector.html',
   styleUrl: './client-data-collector.scss'
 })
-export class ClientDataCollectorComponent implements OnInit, AfterViewChecked {
+export class ClientDataCollectorComponent implements OnInit, OnDestroy, AfterViewChecked {
   private gemini = inject(GeminiService);
 
   @ViewChild('chatContainer') chatContainer!: ElementRef;
@@ -60,11 +62,18 @@ export class ClientDataCollectorComponent implements OnInit, AfterViewChecked {
   messages: Message[] = [];
   userInput = '';
   isLoading = false;
+  isStuck = false;
   isGeneratingForm = false;
+  isGenerateStuck = false;
   formParseError = false;
   interviewerName = '';
   interviewerEmail = '';
   started = false;
+
+  private activeCall: Subscription | null = null;
+  private pendingMessages: string[] = [];
+  private scrollPending = false;
+  private readonly AI_TIMEOUT_MS = 10000;
 
   progressFields: ProgressField[] = [
     { key: 'PURPOSE',      label: 'Purpose',       description: 'What the form is for',     value: null },
@@ -115,21 +124,24 @@ RULES:
   get canGenerateForm() {
     const purpose = this.progressFields.find(f => f.key === 'PURPOSE')?.value;
     const fields  = this.progressFields.find(f => f.key === 'FIELDS')?.value;
-    return !!purpose && !!fields && !this.isLoading && !this.isGeneratingForm;
+    return !!purpose && !!fields && !this.isLoading && !this.isGeneratingForm && !this.isStuck;
   }
 
   ngOnInit() {}
 
-  ngAfterViewChecked() {
-    this.scrollToBottom();
+  ngOnDestroy() {
+    this.activeCall?.unsubscribe();
   }
 
-  scrollToBottom() {
-    try {
-      if (this.chatContainer) {
-        this.chatContainer.nativeElement.scrollTop = this.chatContainer.nativeElement.scrollHeight;
-      }
-    } catch (e) {}
+  ngAfterViewChecked() {
+    if (this.scrollPending) {
+      try {
+        if (this.chatContainer) {
+          this.chatContainer.nativeElement.scrollTop = this.chatContainer.nativeElement.scrollHeight;
+        }
+      } catch (e) {}
+      this.scrollPending = false;
+    }
   }
 
   startSetup() {
@@ -137,32 +149,69 @@ RULES:
     this.started = true;
     const intro = `Hi, I'm ${this.interviewerName}. I need help designing a data collection form for my customers.`;
     this.messages.push({ role: 'user', text: intro });
+    this.scrollPending = true;
     this.callSetupAI();
   }
 
   sendMessage() {
-    if (!this.userInput.trim() || this.isLoading) return;
+    if (!this.userInput.trim()) return;
     const text = this.userInput.trim();
     this.userInput = '';
+
+    if (this.isLoading) {
+      // Queue message — don't drop it
+      this.pendingMessages.push(text);
+      this.messages.push({ role: 'user', text });
+      this.scrollPending = true;
+      return;
+    }
+
+    this.isStuck = false;
     this.messages.push({ role: 'user', text });
+    this.scrollPending = true;
     this.callSetupAI();
   }
 
   callSetupAI() {
+    this.activeCall?.unsubscribe();
     this.isLoading = true;
-    this.gemini.sendMessageWithSystemPrompt(this.messages, this.setupSystemPrompt).subscribe({
-      next: (response: any) => {
-        const raw = response.choices[0].message.content;
-        this.parseCapturedFields(raw);
-        const display = raw.replace(/##CAPTURED:[^#]+##/g, '').trim();
-        this.messages.push({ role: 'model', text: display });
-        this.isLoading = false;
-      },
-      error: () => {
-        this.isLoading = false;
-        this.messages.push({ role: 'model', text: 'Sorry, I encountered an error. Please try again.' });
-      }
-    });
+    this.isStuck = false;
+
+    this.activeCall = this.gemini
+      .sendMessageWithSystemPrompt(this.messages, this.setupSystemPrompt)
+      .pipe(timeout(this.AI_TIMEOUT_MS))
+      .subscribe({
+        next: (response: any) => {
+          const raw = response.choices[0].message.content;
+          this.parseCapturedFields(raw);
+          const display = raw.replace(/##CAPTURED:[^#]+##/g, '').trim();
+          this.messages.push({ role: 'model', text: display });
+          this.scrollPending = true;
+          this.isLoading = false;
+          this.activeCall = null;
+
+          if (this.pendingMessages.length > 0) {
+            this.pendingMessages = [];
+            this.callSetupAI();
+          }
+        },
+        error: (err: any) => {
+          this.isLoading = false;
+          this.activeCall = null;
+          this.pendingMessages = [];
+          if (err?.name === 'TimeoutError') {
+            this.isStuck = true;
+          } else {
+            this.messages.push({ role: 'model', text: 'Sorry, I encountered an error. Please try again.' });
+            this.scrollPending = true;
+          }
+        }
+      });
+  }
+
+  retryChatAI() {
+    this.isStuck = false;
+    this.callSetupAI();
   }
 
   parseCapturedFields(text: string) {
@@ -178,6 +227,7 @@ RULES:
 
   generateForm() {
     this.isGeneratingForm = true;
+    this.isGenerateStuck = false;
     this.formParseError = false;
 
     const captured = this.progressFields
@@ -202,7 +252,7 @@ OUTPUT RULES:
 2. Generate between 4 and 12 questions.
 3. Use "email" for email, "phone" for phone, "date" for dates, "number" for quantities, "select" or "radio" for categorical choices (≤6 options), "textarea" for open-ended, "text" for short answers.
 4. Mark fields as required:true when mentioned as mandatory or clearly essential.
-5. CRITICAL: Every question with type "select", "radio", or "checkbox" MUST include an "options" array with at least 3 meaningful, specific string values. Never use these types without options. Example: "type": "select", "options": ["Option A", "Option B", "Option C"].
+5. CRITICAL: Every question with type "select", "radio", or "checkbox" MUST include an "options" array with at least 3 meaningful, specific string values. Never use these types without options.
 6. Never generate a "select", "radio", or "checkbox" question without a populated "options" array.
 
 REQUIRED JSON SCHEMA:
@@ -224,23 +274,38 @@ REQUIRED JSON SCHEMA:
     const genMessages: Message[] = [{ role: 'user', text: generationPrompt }];
     const genSystemPrompt = 'You are a JSON form schema generator. Output only valid JSON, nothing else.';
 
-    this.gemini.sendMessageWithSystemPrompt(genMessages, genSystemPrompt).subscribe({
-      next: (response: any) => {
-        const raw = response.choices[0].message.content;
-        const parsed = this.parseFormJson(raw);
-        if (parsed) {
-          this.generatedForm = parsed;
-          this.phase = CollectorPhase.FormPreview;
-        } else {
-          this.formParseError = true;
+    this.activeCall?.unsubscribe();
+    this.activeCall = this.gemini
+      .sendMessageWithSystemPrompt(genMessages, genSystemPrompt)
+      .pipe(timeout(this.AI_TIMEOUT_MS))
+      .subscribe({
+        next: (response: any) => {
+          const raw = response.choices[0].message.content;
+          const parsed = this.parseFormJson(raw);
+          if (parsed) {
+            this.generatedForm = parsed;
+            this.phase = CollectorPhase.FormPreview;
+          } else {
+            this.formParseError = true;
+          }
+          this.isGeneratingForm = false;
+          this.activeCall = null;
+        },
+        error: (err: any) => {
+          this.isGeneratingForm = false;
+          this.activeCall = null;
+          if (err?.name === 'TimeoutError') {
+            this.isGenerateStuck = true;
+          } else {
+            this.formParseError = true;
+          }
         }
-        this.isGeneratingForm = false;
-      },
-      error: () => {
-        this.isGeneratingForm = false;
-        this.formParseError = true;
-      }
-    });
+      });
+  }
+
+  retryGenerateForm() {
+    this.isGenerateStuck = false;
+    this.generateForm();
   }
 
   parseFormJson(raw: string): FormDefinition | null {
@@ -262,6 +327,7 @@ REQUIRED JSON SCHEMA:
     this.phase = CollectorPhase.SetupChat;
     this.generatedForm = null;
     this.messages.push({ role: 'model', text: "No problem! Let's refine the requirements. What would you like to change or add?" });
+    this.scrollPending = true;
   }
 
   sendToCustomer() {
@@ -297,15 +363,20 @@ REQUIRED JSON SCHEMA:
   }
 
   newCollection() {
+    this.activeCall?.unsubscribe();
+    this.activeCall = null;
     this.phase = CollectorPhase.SetupChat;
     this.messages = [];
     this.userInput = '';
     this.isLoading = false;
+    this.isStuck = false;
     this.isGeneratingForm = false;
+    this.isGenerateStuck = false;
     this.formParseError = false;
     this.interviewerName = '';
     this.interviewerEmail = '';
     this.started = false;
+    this.pendingMessages = [];
     this.progressFields.forEach(f => f.value = null);
     this.generatedForm = null;
     this.customerEmail = '';
