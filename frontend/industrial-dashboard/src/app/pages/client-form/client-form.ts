@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { Subscription } from 'rxjs';
-import { timeout } from 'rxjs/operators';
 import { GeminiService, Message } from '../../services/gemini.service';
 import { FormDefinition, FormQuestion, StoredForm } from '../client-data-collector/client-data-collector';
 
@@ -35,11 +34,12 @@ export class ClientFormComponent implements OnInit, OnDestroy, AfterViewChecked 
   isSendingEmail = false;
 
   private activeCall: Subscription | null = null;
+  private timeoutHandle: any = null;
   private pendingMessages: string[] = [];
   private scrollPending = false;
 
-  private readonly apiBase = 'https://industrial-ml-api.azurewebsites.net';
   private readonly AI_TIMEOUT_MS = 10000;
+  private readonly apiBase = 'https://industrial-ml-api.azurewebsites.net';
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -59,6 +59,7 @@ export class ClientFormComponent implements OnInit, OnDestroy, AfterViewChecked 
   }
 
   ngOnDestroy() {
+    this.clearTimeout();
     this.activeCall?.unsubscribe();
   }
 
@@ -75,6 +76,27 @@ export class ClientFormComponent implements OnInit, OnDestroy, AfterViewChecked 
         this.chatContainer.nativeElement.scrollTop = this.chatContainer.nativeElement.scrollHeight;
       }
     } catch (e) {}
+  }
+
+  private startTimeout() {
+    this.clearTimeout();
+    this.timeoutHandle = setTimeout(() => {
+      if (this.isLoading) {
+        this.activeCall?.unsubscribe();
+        this.activeCall = null;
+        this.isLoading = false;
+        this.isStuck = true;
+        this.pendingMessages = [];
+        this.scrollPending = true;
+      }
+    }, this.AI_TIMEOUT_MS);
+  }
+
+  private clearTimeout() {
+    if (this.timeoutHandle !== null) {
+      clearTimeout(this.timeoutHandle);
+      this.timeoutHandle = null;
+    }
   }
 
   get systemPrompt(): string {
@@ -114,7 +136,6 @@ RULES:
     const text = this.userInput.trim();
     this.userInput = '';
 
-    // If AI is busy, queue the message — don't drop it
     if (this.isLoading) {
       this.pendingMessages.push(text);
       this.messages.push({ role: 'user', text });
@@ -122,22 +143,25 @@ RULES:
       return;
     }
 
+    this.isStuck = false;
     this.messages.push({ role: 'user', text });
     this.scrollPending = true;
     this.callAI();
   }
 
   callAI() {
-    // Cancel any stuck previous call
     this.activeCall?.unsubscribe();
+    this.clearTimeout();
     this.isLoading = true;
     this.isStuck = false;
 
+    this.startTimeout();
+
     this.activeCall = this.gemini
       .sendMessageWithSystemPrompt(this.messages, this.systemPrompt)
-      .pipe(timeout(this.AI_TIMEOUT_MS))
       .subscribe({
         next: (response: any) => {
+          this.clearTimeout();
           const raw = response.choices[0].message.content;
           this.parseAnswers(raw);
           const display = raw.replace(/##ANSWER:[^#]+##/g, '').trim();
@@ -146,23 +170,18 @@ RULES:
           this.isLoading = false;
           this.activeCall = null;
 
-          // Process any queued messages
           if (this.pendingMessages.length > 0) {
             this.pendingMessages = [];
             this.callAI();
           }
         },
-        error: (err: any) => {
+        error: () => {
+          this.clearTimeout();
           this.isLoading = false;
           this.activeCall = null;
           this.pendingMessages = [];
-
-          if (err?.name === 'TimeoutError') {
-            this.isStuck = true;
-          } else {
-            this.messages.push({ role: 'model', text: 'Sorry, I encountered an error. Please try again.' });
-            this.scrollPending = true;
-          }
+          this.messages.push({ role: 'model', text: 'Sorry, I encountered an error. Please try again.' });
+          this.scrollPending = true;
         }
       });
   }
