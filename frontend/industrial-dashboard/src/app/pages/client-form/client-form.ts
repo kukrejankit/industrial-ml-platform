@@ -39,7 +39,7 @@ export class ClientFormComponent implements OnInit, OnDestroy, AfterViewChecked 
   private scrollPending = false;
 
   private readonly apiBase = 'https://industrial-ml-api.azurewebsites.net';
-  private readonly AI_TIMEOUT_MS = 45000;
+  private readonly AI_TIMEOUT_MS = 10000;
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -249,4 +249,3 @@ RULES:
     }
   }
 }
-
