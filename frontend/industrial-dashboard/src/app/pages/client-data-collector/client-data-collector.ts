@@ -2,7 +2,6 @@ import { Component, OnInit, OnDestroy, inject, ViewChild, ElementRef, AfterViewC
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
-import { timeout } from 'rxjs/operators';
 import { GeminiService, Message } from '../../services/gemini.service';
 
 export type QuestionType = 'text' | 'textarea' | 'email' | 'phone' | 'number' | 'date' | 'select' | 'radio' | 'checkbox';
@@ -71,6 +70,7 @@ export class ClientDataCollectorComponent implements OnInit, OnDestroy, AfterVie
   started = false;
 
   private activeCall: Subscription | null = null;
+  private timeoutHandle: any = null;
   private pendingMessages: string[] = [];
   private scrollPending = false;
   private readonly AI_TIMEOUT_MS = 10000;
@@ -130,7 +130,20 @@ RULES:
   ngOnInit() {}
 
   ngOnDestroy() {
+    this.clearTimer();
     this.activeCall?.unsubscribe();
+  }
+
+  private startTimer(onTimeout: () => void) {
+    this.clearTimer();
+    this.timeoutHandle = setTimeout(onTimeout, this.AI_TIMEOUT_MS);
+  }
+
+  private clearTimer() {
+    if (this.timeoutHandle !== null) {
+      clearTimeout(this.timeoutHandle);
+      this.timeoutHandle = null;
+    }
   }
 
   ngAfterViewChecked() {
@@ -177,11 +190,22 @@ RULES:
     this.isLoading = true;
     this.isStuck = false;
 
+    this.startTimer(() => {
+      if (this.isLoading) {
+        this.activeCall?.unsubscribe();
+        this.activeCall = null;
+        this.isLoading = false;
+        this.isStuck = true;
+        this.pendingMessages = [];
+        this.scrollPending = true;
+      }
+    });
+
     this.activeCall = this.gemini
       .sendMessageWithSystemPrompt(this.messages, this.setupSystemPrompt)
-      .pipe(timeout(this.AI_TIMEOUT_MS))
       .subscribe({
         next: (response: any) => {
+          this.clearTimer();
           const raw = response.choices[0].message.content;
           this.parseCapturedFields(raw);
           const display = raw.replace(/##CAPTURED:[^#]+##/g, '').trim();
@@ -195,16 +219,13 @@ RULES:
             this.callSetupAI();
           }
         },
-        error: (err: any) => {
+        error: () => {
+          this.clearTimer();
           this.isLoading = false;
           this.activeCall = null;
           this.pendingMessages = [];
-          if (err?.name === 'TimeoutError') {
-            this.isStuck = true;
-          } else {
-            this.messages.push({ role: 'model', text: 'Sorry, I encountered an error. Please try again.' });
-            this.scrollPending = true;
-          }
+          this.messages.push({ role: 'model', text: 'Sorry, I encountered an error. Please try again.' });
+          this.scrollPending = true;
         }
       });
   }
@@ -275,11 +296,21 @@ REQUIRED JSON SCHEMA:
     const genSystemPrompt = 'You are a JSON form schema generator. Output only valid JSON, nothing else.';
 
     this.activeCall?.unsubscribe();
+
+    this.startTimer(() => {
+      if (this.isGeneratingForm) {
+        this.activeCall?.unsubscribe();
+        this.activeCall = null;
+        this.isGeneratingForm = false;
+        this.isGenerateStuck = true;
+      }
+    });
+
     this.activeCall = this.gemini
       .sendMessageWithSystemPrompt(genMessages, genSystemPrompt)
-      .pipe(timeout(this.AI_TIMEOUT_MS))
       .subscribe({
         next: (response: any) => {
+          this.clearTimer();
           const raw = response.choices[0].message.content;
           const parsed = this.parseFormJson(raw);
           if (parsed) {
@@ -291,14 +322,11 @@ REQUIRED JSON SCHEMA:
           this.isGeneratingForm = false;
           this.activeCall = null;
         },
-        error: (err: any) => {
+        error: () => {
+          this.clearTimer();
           this.isGeneratingForm = false;
           this.activeCall = null;
-          if (err?.name === 'TimeoutError') {
-            this.isGenerateStuck = true;
-          } else {
-            this.formParseError = true;
-          }
+          this.formParseError = true;
         }
       });
   }
