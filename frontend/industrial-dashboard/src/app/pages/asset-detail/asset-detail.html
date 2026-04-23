@@ -1,1 +1,284 @@
-<p>asset-detail works!</p>
+<div class="pump-dashboard">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <div class="dash-header">
+    <div class="header-left">
+      <button class="back-btn" (click)="goBack()">← Back</button>
+      <div class="header-title">
+        <h1>{{ asset?.name ?? 'Influent Pump A' }}</h1>
+        <span class="asset-type">{{ asset?.assetType ?? 'Influent Pump' }} · Wastewater Treatment</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge">
+        <span class="live-dot"></span> LIVE
+      </div>
+      <div class="status-badge" [class]="statusClass">{{ statusLabel }}</div>
+      <div class="last-updated">Updated {{ lastUpdated | date:'HH:mm:ss' }}</div>
+    </div>
+  </div>
+
+  <!-- ── KPI Row ──────────────────────────────────────────────────────────── -->
+  <div class="kpi-row">
+
+    <div class="kpi-card">
+      <div class="kpi-top">
+        <span class="kpi-label">Flow Rate</span>
+        <span class="kpi-unit">L/s</span>
+      </div>
+      <div class="kpi-value">{{ flowRate | number:'1.1-1' }}</div>
+      <div class="kpi-range">Normal: 30–60 L/s</div>
+      <svg class="sparkline" viewBox="0 0 90 30" preserveAspectRatio="none">
+        <path [attr.d]="sparklinePath(flowHistory, 25, 65)" fill="none" stroke="#0f766e" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-top">
+        <span class="kpi-label">Motor Current</span>
+        <span class="kpi-unit">A</span>
+      </div>
+      <div class="kpi-value">{{ motorCurrent | number:'1.1-1' }}</div>
+      <div class="kpi-range">Normal: 15–30 A</div>
+      <svg class="sparkline" viewBox="0 0 90 30" preserveAspectRatio="none">
+        <path [attr.d]="sparklinePath(currentHistory, 12, 33)" fill="none" stroke="#0f766e" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <div class="kpi-card" [class.kpi-warn]="tempStatus() === 'warn'" [class.kpi-alarm]="tempStatus() === 'alarm'">
+      <div class="kpi-top">
+        <span class="kpi-label">Bearing Temperature</span>
+        <span class="kpi-unit">°C</span>
+      </div>
+      <div class="kpi-value" [class.value-warn]="tempStatus() === 'warn'" [class.value-alarm]="tempStatus() === 'alarm'">
+        {{ bearingTemp | number:'1.1-1' }}
+      </div>
+      <div class="kpi-range">Normal: 40–70 °C · Alarm: &gt;75</div>
+      <svg class="sparkline" viewBox="0 0 90 30" preserveAspectRatio="none">
+        <path [attr.d]="sparklinePath(tempHistory, 35, 80)"
+          fill="none"
+          [attr.stroke]="tempStatus() === 'alarm' ? '#dc2626' : tempStatus() === 'warn' ? '#d97706' : '#0f766e'"
+          stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-top">
+        <span class="kpi-label">Pump Efficiency</span>
+        <span class="kpi-unit">%</span>
+      </div>
+      <div class="kpi-value">{{ efficiency | number:'1.1-1' }}</div>
+      <div class="kpi-range">Normal: 60–80%</div>
+      <svg class="sparkline" viewBox="0 0 90 30" preserveAspectRatio="none">
+        <path [attr.d]="sparklinePath(efficiencyHistory, 55, 85)" fill="none" stroke="#0f766e" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+  </div>
+
+  <!-- ── Main Body ─────────────────────────────────────────────────────────── -->
+  <div class="main-body">
+
+    <!-- Left: Health Panel -->
+    <div class="health-panel">
+
+      <div class="panel-card gauge-card">
+        <div class="panel-label">Overall Health Score</div>
+        <div class="gauge-wrap">
+          <svg viewBox="0 0 200 200" width="180" height="180">
+            <!-- Background arc -->
+            <path [attr.d]="healthGaugeBg"
+              fill="none" stroke="#e2e8f0" stroke-width="18" stroke-linecap="round"/>
+            <!-- Value arc -->
+            <path [attr.d]="healthGaugeVal"
+              fill="none" [attr.stroke]="healthColor" stroke-width="18" stroke-linecap="round"
+              style="transition: stroke 0.3s;"/>
+            <!-- Score text -->
+            <text x="100" y="100" text-anchor="middle" dominant-baseline="central"
+              font-size="38" font-weight="700" fill="#0f172a">
+              {{ healthScore | number:'1.0-0' }}
+            </text>
+            <text x="100" y="128" text-anchor="middle"
+              font-size="13" fill="#64748b">Health %</text>
+          </svg>
+        </div>
+        <div class="gauge-status" [class]="statusClass">{{ statusLabel }}</div>
+      </div>
+
+      <div class="panel-card rul-card">
+        <div class="panel-label">Remaining Useful Life</div>
+        <div class="rul-value" [style.color]="rulDays < 90 ? '#dc2626' : rulDays < 180 ? '#d97706' : '#16a34a'">
+          {{ rulLabel(rulDays) }}
+        </div>
+        <div class="rul-sub">before recommended overhaul</div>
+        <div class="rul-bar-bg">
+          <div class="rul-bar-fill"
+            [style.width]="(rulDays / 365 * 100).toFixed(0) + '%'"
+            [style.background]="rulDays < 90 ? '#dc2626' : rulDays < 180 ? '#d97706' : '#16a34a'">
+          </div>
+        </div>
+        <div class="rul-scale">
+          <span>0</span>
+          <span>1yr</span>
+        </div>
+      </div>
+
+      <div class="panel-card alerts-card">
+        <div class="panel-label">Active Alerts</div>
+        <div class="alert-item warn" *ngIf="bearingTemp > 65">
+          <span class="alert-icon">⚠</span>
+          <span>Bearing temperature elevated ({{ bearingTemp | number:'1.1-1' }} °C)</span>
+        </div>
+        <div class="alert-item alarm" *ngIf="bearingTemp > 75">
+          <span class="alert-icon">🔴</span>
+          <span>Bearing temp ALARM threshold exceeded</span>
+        </div>
+        <div class="alert-item warn" *ngIf="healthScore < 65">
+          <span class="alert-icon">⚠</span>
+          <span>Health score below warning threshold</span>
+        </div>
+        <div class="no-alerts" *ngIf="bearingTemp <= 65 && healthScore >= 65">
+          <span>✓ No active alerts</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: AI Calculator Panel -->
+    <div class="calc-panel">
+      <div class="calc-header">
+        <div>
+          <div class="calc-title">AI Predictive Calculator</div>
+          <div class="calc-subtitle">Adjust parameters below — drag rows to reprioritise — and see the AI-predicted impact on pump life, health, and efficiency in real time.</div>
+        </div>
+        <div class="calc-ai-badge">✨ Powered by Claude AI</div>
+      </div>
+
+      <!-- Parameter rows -->
+      <div class="params-list">
+        <div
+          *ngFor="let p of calcParams; let i = index"
+          class="param-row"
+          draggable="true"
+          (dragstart)="onDragStart(i)"
+          (dragover)="onDragOver($event, i)"
+          (drop)="onDrop(i)"
+          (dragend)="onDragEnd()"
+          [class.param-above]="isAboveNormal(p)"
+          [class.param-below]="isBelowNormal(p)">
+
+          <div class="drag-handle" title="Drag to reorder">⠿</div>
+
+          <div class="param-meta">
+            <div class="param-label">{{ p.label }}</div>
+            <div class="param-normal">Normal: {{ p.normalMin }}–{{ p.normalMax }} {{ p.unit }}</div>
+          </div>
+
+          <div class="param-slider-wrap">
+            <div class="slider-track">
+              <div class="slider-normal-zone"
+                [style.left]="((p.normalMin - p.min) / (p.max - p.min) * 100).toFixed(1) + '%'"
+                [style.width]="((p.normalMax - p.normalMin) / (p.max - p.min) * 100).toFixed(1) + '%'">
+              </div>
+              <div class="slider-fill" [style.width]="sliderFill(p)"></div>
+            </div>
+            <input type="range"
+              class="param-slider"
+              [(ngModel)]="p.value"
+              [min]="p.min"
+              [max]="p.max"
+              [step]="p.step"
+              (input)="onParamChange()">
+          </div>
+
+          <div class="param-input-wrap">
+            <input type="number"
+              class="param-number"
+              [(ngModel)]="p.value"
+              [min]="p.min"
+              [max]="p.max"
+              [step]="p.step"
+              (change)="onParamChange()">
+            <span class="param-unit">{{ p.unit }}</span>
+          </div>
+
+          <div class="param-status" *ngIf="isAboveNormal(p)">↑ High</div>
+          <div class="param-status status-low" *ngIf="isBelowNormal(p)">↓ Low</div>
+          <div class="param-status status-ok" *ngIf="!isAboveNormal(p) && !isBelowNormal(p)">✓</div>
+        </div>
+      </div>
+
+      <!-- AI Prediction Results -->
+      <div class="prediction-panel">
+        <div class="prediction-header">
+          <span class="prediction-title">AI Prediction</span>
+          <span class="calculating-badge" *ngIf="isCalculating">
+            <span class="calc-spinner"></span> Analysing…
+          </span>
+          <div class="stuck-banner" *ngIf="calcStuck">
+            <span>⚠ AI timed out</span>
+            <button class="retry-btn" (click)="retryCalc()">↺ Retry</button>
+          </div>
+        </div>
+
+        <div class="prediction-results" *ngIf="aiPrediction && !isCalculating">
+          <div class="pred-grid">
+            <div class="pred-card">
+              <div class="pred-label">Predicted Health</div>
+              <div class="pred-value" [style.color]="predHealthColor">
+                {{ aiPrediction.healthScore }}%
+              </div>
+              <div class="pred-delta" *ngIf="hasCalculated">
+                {{ aiPrediction.healthScore > healthScore ? '▲' : '▼' }}
+                {{ (aiPrediction.healthScore - healthScore | number:'1.0-0') }} pts vs live
+              </div>
+            </div>
+            <div class="pred-card">
+              <div class="pred-label">Predicted Efficiency</div>
+              <div class="pred-value" [style.color]="predHealthColor">
+                {{ aiPrediction.efficiency }}%
+              </div>
+              <div class="pred-delta" *ngIf="hasCalculated">
+                {{ aiPrediction.efficiency > efficiency ? '▲' : '▼' }}
+                {{ (aiPrediction.efficiency - efficiency | number:'1.0-0') }} pts vs live
+              </div>
+            </div>
+            <div class="pred-card">
+              <div class="pred-label">Predicted RUL</div>
+              <div class="pred-value" [style.color]="predRulColor">
+                {{ rulLabel(aiPrediction.rulDays) }}
+              </div>
+              <div class="pred-delta" *ngIf="hasCalculated">
+                {{ aiPrediction.rulDays > rulDays ? '▲' : '▼' }}
+                {{ (aiPrediction.rulDays - rulDays | number:'1.0-0') }} days vs live
+              </div>
+            </div>
+            <div class="pred-card">
+              <div class="pred-label">Risk Level</div>
+              <div class="pred-value risk-value" [style.color]="predRiskColor">
+                {{ aiPrediction.riskLevel | uppercase }}
+              </div>
+            </div>
+          </div>
+
+          <div class="ai-insight">
+            <div class="insight-icon">💡</div>
+            <div class="insight-text">{{ aiPrediction.insight }}</div>
+          </div>
+        </div>
+
+        <div class="prediction-empty" *ngIf="!aiPrediction && !isCalculating && !calcStuck">
+          Adjust any parameter to generate a prediction.
+        </div>
+
+        <div class="prediction-skeleton" *ngIf="isCalculating">
+          <div class="skel-row"></div>
+          <div class="skel-row short"></div>
+          <div class="skel-row"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
