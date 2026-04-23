@@ -1,262 +1,340 @@
-<div class="cdc-container">
+import { Component, OnInit, OnDestroy, inject, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { Subscription } from 'rxjs';
+import { GeminiService, Message } from '../../services/gemini.service';
 
-  <!-- Header -->
-  <div class="cdc-header">
-    <div class="header-left">
-      <div class="header-icon">📊</div>
-      <div>
-        <h1>FVM Data Request</h1>
-        <p>Design and send data collection forms for Feature Value Matrix work</p>
-      </div>
-    </div>
-    <div class="header-right">
-      <div class="phase-steps" *ngIf="started">
-        <span class="step" [class.active]="phase === CollectorPhase.SetupChat" [class.done]="phase > CollectorPhase.SetupChat">
-          <span class="step-num">1</span> Design
-        </span>
-        <span class="step-arrow">›</span>
-        <span class="step" [class.active]="phase === CollectorPhase.FormPreview" [class.done]="phase > CollectorPhase.FormPreview">
-          <span class="step-num">2</span> Review
-        </span>
-        <span class="step-arrow">›</span>
-        <span class="step" [class.active]="phase === CollectorPhase.Send" [class.done]="phase === CollectorPhase.Sent">
-          <span class="step-num">3</span> Send
-        </span>
-      </div>
-      <button class="btn-secondary" (click)="newCollection()" *ngIf="started">Start Over</button>
-    </div>
-  </div>
+export interface FvmQuestion {
+  id: string;
+  section: 'Assumptions' | 'Magnitudes';
+  shortLabel: string;
+  fullQuestion: string;
+}
 
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- PHASE 1 — Start Screen                                  -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <div class="start-screen" *ngIf="!started && phase === CollectorPhase.SetupChat">
-    <div class="start-card">
-      <h2>New FVM Data Request</h2>
-      <p>Our AI will help you design a tailored data collection form for your Feature Value Matrix work through a short conversation.</p>
+export const FVM_QUESTIONS: FvmQuestion[] = [
+  // ── Assumptions ───────────────────────────────────────────────────────────
+  { id: 'a1',  section: 'Assumptions', shortLabel: 'CSAT → ARPU lift',               fullQuestion: "We're currently assuming $0.20 annual ARPU lift per customer for every 1 basis point improvement in CSAT. Does that sound right to you, and what would you recommend?" },
+  { id: 'a2',  section: 'Assumptions', shortLabel: 'Engagement → ARPU lift',         fullQuestion: "We're currently assuming $0.02 annual ARPU lift per customer for every 1 basis point improvement in app engagement. Does that sound right to you, and what would you recommend?" },
+  { id: 'a3',  section: 'Assumptions', shortLabel: 'Cost per support contact',        fullQuestion: "We're currently using $5.07 as the fully loaded average cost per support contact (sourced from the SHM monthly report). Does that align with what you're seeing, and what would you suggest?" },
+  { id: 'a4',  section: 'Assumptions', shortLabel: 'Wireless postpaid ARPU',          fullQuestion: "We're currently using $57/month as the average ARPU for wireless postpaid per line. What would you use, and why?" },
+  { id: 'a5',  section: 'Assumptions', shortLabel: 'Fiber ARPU',                      fullQuestion: "We're currently using $65/month as the average ARPU for Fiber per subscriber. What would you use, and why?" },
+  { id: 'a6',  section: 'Assumptions', shortLabel: 'AIA ARPU',                        fullQuestion: "We're currently using $55/month as the average ARPU for AIA per subscriber. What would you use, and why?" },
+  { id: 'a7',  section: 'Assumptions', shortLabel: 'Second service revenue',          fullQuestion: "We're currently assuming $45/month in incremental revenue when a customer adds a second AT&T service. Does that feel accurate, and what's your read?" },
+  { id: 'a8',  section: 'Assumptions', shortLabel: 'Upsell / add-on value',           fullQuestion: "We're currently using $8/month as the average value of an upsell or add-on per customer. What would you recommend, and what drives that number for you?" },
+  { id: 'a9',  section: 'Assumptions', shortLabel: 'At-risk churn rate',              fullQuestion: "We're currently assuming 1% of the eligible base is at risk of churning at any given time. Does that reflect your experience, and what would you change?" },
+  { id: 'a10', section: 'Assumptions', shortLabel: 'Single-service base',             fullQuestion: "We're currently assuming 60% of the eligible base is single-service (i.e., not yet converged), sourced from the BC. Does that track, and what's your current view?" },
+  { id: 'a11', section: 'Assumptions', shortLabel: 'Support contact rate',            fullQuestion: "We're currently assuming 0.8 support contacts per customer per year as the baseline contact rate. What would you use, and what's driving that for you?" },
+  { id: 'a12', section: 'Assumptions', shortLabel: 'Digital transaction savings',     fullQuestion: "We're currently estimating $12 in savings per transaction shifted from retail to digital. Does that feel right, and what would you use?" },
+  { id: 'a13', section: 'Assumptions', shortLabel: 'Retail transactions per customer',fullQuestion: "We're currently assuming 0.3 retail transactions per customer per year. What's your estimate, and what's that based on?" },
+  { id: 'a14', section: 'Assumptions', shortLabel: 'Resource cost per day',           fullQuestion: "We're currently using $360/day as the fully loaded resource cost to build a feature. What would you recommend, and how are you thinking about that?" },
+  { id: 'a15', section: 'Assumptions', shortLabel: 'Feature build time range',        fullQuestion: "We're currently modeling feature build time as 0 to 5 weeks. Does that match your teams' experience, and what range would you suggest?" },
 
-      <div class="form-group">
-        <label>Your Name</label>
-        <input type="text" [(ngModel)]="interviewerName" placeholder="e.g. Jane Smith" class="form-input" />
-      </div>
+  // ── Magnitudes ────────────────────────────────────────────────────────────
+  { id: 'm1',  section: 'Magnitudes',  shortLabel: 'Gross adds lift',                 fullQuestion: "For features customers actually adopt, we're currently modeling a gross adds lift of 0 to 0.3% of adopting customers. What magnitude have you seen in practice, and what would you recommend?" },
+  { id: 'm2',  section: 'Magnitudes',  shortLabel: 'Convergence uplift',              fullQuestion: "For convergence uplift, we're modeling 0 to 0.3% of adopting customers converting from single- to multi-service. Does that feel like the right range to you?" },
+  { id: 'm3',  section: 'Magnitudes',  shortLabel: 'Churn save rate',                 fullQuestion: "For churn saves, we're modeling a 0 to 15% reduction in churn attributable to a feature. What range reflects your experience?" },
+  { id: 'm4',  section: 'Magnitudes',  shortLabel: 'ARPU expansion',                  fullQuestion: "For ARPU expansion through add-ons, upsells, or upgrades, we're using 0 to 2%. What would you peg this at, and why?" },
+  { id: 'm5',  section: 'Magnitudes',  shortLabel: 'Call shed',                       fullQuestion: "For call shed, we're modeling 0 to 20% of inbound support contacts deflected by a feature. What range would you use?" },
+  { id: 'm6',  section: 'Magnitudes',  shortLabel: 'Digital sales shift',             fullQuestion: "For digital sales shift, we're modeling 0 to 20% of retail transactions moving to digital through a feature. Does that feel right?" },
+  { id: 'm7',  section: 'Magnitudes',  shortLabel: 'CX uplift (CSAT bps)',            fullQuestion: "For customer experience uplift, we're modeling 0 to 0.6 basis points of CSAT improvement per feature. What's your sense of a realistic range?" },
+  { id: 'm8',  section: 'Magnitudes',  shortLabel: 'Friction reduction (CSAT bps)',   fullQuestion: "For friction reduction, we're also modeling 0 to 0.6 basis points of CSAT improvement. Does that align with what you'd expect, and would you separate it from experience uplift?" },
+  { id: 'm9',  section: 'Magnitudes',  shortLabel: 'Engagement → revenue conversion', fullQuestion: "We don't yet have a way to translate MAU or DAU/MAU engagement metrics into dollar value. How would you approach converting engagement signals into revenue impact?" },
+  { id: 'm10', section: 'Magnitudes',  shortLabel: 'Story points → cost',             fullQuestion: "We don't currently have a conversion from story points to dollar value. How would you translate a story point estimate into a cost or effort value?" },
+  { id: 'm11', section: 'Magnitudes',  shortLabel: 'T-shirt sizing → cost',           fullQuestion: "We don't currently have a dollar mapping for T-shirt sizing. How would you assign a dollar value to each T-shirt size — S, M, L, XL — for feature build effort?" },
+];
 
-      <div class="form-group">
-        <label>Your Email Address</label>
-        <input type="email" [(ngModel)]="interviewerEmail" placeholder="e.g. jane@company.com" class="form-input" />
-      </div>
+export enum FvmPhase {
+  Start     = 1,
+  Interview = 2,
+  Send      = 3,
+  Sent      = 4
+}
 
-      <button class="btn-primary" (click)="startSetup()" [disabled]="!interviewerName.trim() || !interviewerEmail.trim()">
-        Start Designing →
-      </button>
+@Component({
+  selector: 'app-fvm-data-request',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  templateUrl: './fvm-data-request.html',
+  styleUrl: './fvm-data-request.scss'
+})
+export class FvmDataRequestComponent implements OnInit, OnDestroy, AfterViewChecked {
+  private gemini = inject(GeminiService);
+  private http   = inject(HttpClient);
 
-      <div class="info-boxes">
-        <div class="info-box">
-          <div class="info-icon">💬</div>
-          <div class="info-text">
-            <strong>Step 1: Describe your needs</strong>
-            <span>Chat with AI to describe what data you want to collect from customers</span>
-          </div>
-        </div>
-        <div class="info-box">
-          <div class="info-icon">✅</div>
-          <div class="info-text">
-            <strong>Step 2: Review &amp; approve</strong>
-            <span>AI generates a form — approve it or go back to refine</span>
-          </div>
-        </div>
-        <div class="info-box">
-          <div class="info-icon">📧</div>
-          <div class="info-text">
-            <strong>Step 3: Send to customer</strong>
-            <span>Share a unique link — customer fills it out and can download their responses</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  @ViewChild('chatContainer') chatContainer!: ElementRef;
 
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- PHASE 1 — Chat Interface                                -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <div class="cdc-body" *ngIf="started && phase === CollectorPhase.SetupChat">
+  FvmPhase      = FvmPhase;
+  phase         = FvmPhase.Start;
+  questions     = FVM_QUESTIONS;
 
-    <!-- Left: Requirements Panel -->
-    <div class="requirements-panel">
-      <div class="panel-heading">
-        <span class="panel-title">Requirements</span>
-        <span class="panel-count">{{ capturedCount }}/4</span>
-      </div>
+  // Start screen
+  interviewerName = '';
+  respondentName  = '';
+  respondentRole  = '';
 
-      <div class="req-bar-wrap">
-        <div class="req-bar-fill" [style.width.%]="(capturedCount / 4) * 100"></div>
-      </div>
+  // Interview state
+  messages: Message[]           = [];
+  answers: Record<string, string> = {};
+  userInput  = '';
+  isLoading  = false;
+  isStuck    = false;
+  started    = false;
 
-      <div class="req-list">
-        <div *ngFor="let field of progressFields" class="req-field" [class.filled]="field.value !== null">
-          <div class="req-dot"></div>
-          <div class="req-info">
-            <div class="req-label">{{ field.label }}</div>
-            <div class="req-hint" *ngIf="field.value === null">{{ field.description }}</div>
-            <div class="req-value" *ngIf="field.value !== null">{{ field.value }}</div>
-          </div>
-          <div class="req-check" *ngIf="field.value !== null">✓</div>
-        </div>
-      </div>
+  private activeCall:      Subscription | null = null;
+  private timeoutHandle:   any = null;
+  private pendingMessages: string[] = [];
+  private scrollPending    = false;
+  private readonly AI_TIMEOUT_MS = 10000;
 
-      <div class="generate-section">
-        <div class="generate-hint" *ngIf="!canGenerateForm && !isGeneratingForm">
-          Define the purpose and key fields to unlock form generation.
-        </div>
-        <button class="btn-generate" (click)="generateForm()" [disabled]="!canGenerateForm">
-          <span *ngIf="!isGeneratingForm">✨ Generate Form</span>
-          <span *ngIf="isGeneratingForm" class="generating-text">
-            <span class="spinner"></span> Generating…
-          </span>
-        </button>
-        <div class="stuck-banner" *ngIf="isGenerateStuck">
-          <span>⚠ Generation timed out.</span>
-          <button class="retry-btn" (click)="retryGenerateForm()">↺ Retry</button>
-        </div>
-        <div class="parse-error" *ngIf="formParseError">
-          Generation failed. Please try again.
-        </div>
-      </div>
-    </div>
+  // Send state
+  recipientEmail   = '';
+  isSendingReport  = false;
+  isGeneratingReport = false;
+  linkCopied       = false;
 
-    <!-- Right: Chat Panel -->
-    <div class="chat-panel">
-      <div class="chat-messages" #chatContainer>
-        <div
-          *ngFor="let msg of messages"
-          class="message"
-          [class.user-message]="msg.role === 'user'"
-          [class.ai-message]="msg.role === 'model'">
-          <div class="message-avatar">
-            {{ msg.role === 'user' ? interviewerName[0]?.toUpperCase() : '🤖' }}
-          </div>
-          <div class="message-content">
-            <div class="message-sender">{{ msg.role === 'user' ? interviewerName : 'AI Assistant' }}</div>
-            <div class="message-text" [innerHTML]="msg.text"></div>
-          </div>
-        </div>
+  private readonly apiBase = 'https://industrial-ml-api.azurewebsites.net';
 
-        <div class="message ai-message" *ngIf="isLoading && !isStuck">
-          <div class="message-avatar">🤖</div>
-          <div class="message-content">
-            <div class="message-sender">AI Assistant</div>
-            <div class="typing-indicator"><span></span><span></span><span></span></div>
-          </div>
-        </div>
+  // ── Computed ──────────────────────────────────────────────────────────────
+  get answeredCount()   { return Object.keys(this.answers).length; }
+  get totalQuestions()  { return this.questions.length; }
+  get progressPercent() { return Math.round(this.answeredCount / this.totalQuestions * 100); }
+  get assumptionsDone() { return this.questions.filter(q => q.section === 'Assumptions' && this.answers[q.id]).length; }
+  get magnitudesDone()  { return this.questions.filter(q => q.section === 'Magnitudes'  && this.answers[q.id]).length; }
+  get allDone()         { return this.answeredCount === this.totalQuestions; }
 
-        <div class="stuck-banner" *ngIf="isStuck">
-          <span>⚠ The AI took too long to respond.</span>
-          <button class="retry-btn" (click)="retryChatAI()">↺ Retry</button>
-        </div>
-      </div>
+  isAnswered(q: FvmQuestion) { return !!this.answers[q.id]; }
 
-      <div class="chat-input-area">
-        <textarea
-          [(ngModel)]="userInput"
-          (keydown)="onKeyPress($event)"
-          placeholder="Type your answer… (Enter to send)"
-          class="chat-input"
-          rows="2">
-        </textarea>
-        <button class="send-btn" (click)="sendMessage()" [disabled]="!userInput.trim()">Send</button>
-      </div>
-    </div>
-  </div>
+  get systemPrompt(): string {
+    const qList = this.questions.map((q, i) =>
+      `${i + 1}. [ID: ${q.id}] ${q.fullQuestion}`
+    ).join('\n\n');
 
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- PHASE 2 — Form Preview                                  -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <div class="preview-phase" *ngIf="phase === CollectorPhase.FormPreview && generatedForm">
-    <div class="preview-container">
+    return `You are conducting a structured FVM (Feature Value Matrix) assumptions validation interview on behalf of ${this.interviewerName}. You are speaking with ${this.respondentName}, ${this.respondentRole}.
 
-      <div class="preview-top-bar">
-        <div class="preview-title-block">
-          <h2>{{ generatedForm.title }}</h2>
-          <p>{{ generatedForm.description }}</p>
-        </div>
-        <div class="preview-actions">
-          <button class="btn-modify" (click)="rejectForm()">✗ Modify</button>
-          <button class="btn-approve" (click)="approveForm()">✓ Approve &amp; Continue</button>
-        </div>
-      </div>
+Your role is to go through each question below one at a time, in order, in a professional and collaborative tone. These are expert business stakeholders — be concise and respect their time.
 
-      <div class="preview-note">
-        Review the generated form below. Approve to proceed, or Modify to refine the requirements.
-      </div>
+QUESTIONS TO COVER (ask in this exact order):
+${qList}
 
-      <div class="questions-preview">
-        <div *ngFor="let q of generatedForm.questions; let i = index" class="preview-question-card">
-          <div class="pq-number">{{ i + 1 }}</div>
-          <div class="pq-body">
-            <div class="pq-label">
-              {{ q.label }}
-              <span class="required-badge" *ngIf="q.required">Required</span>
-            </div>
-            <div class="pq-meta">
-              <span class="type-chip">{{ typeLabels[q.type] }}</span>
-              <span class="options-preview" *ngIf="q.options && q.options.length > 0">
-                <span *ngFor="let opt of q.options" class="opt-chip">{{ opt }}</span>
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+RULES:
+1. Ask one question at a time, exactly as written above. You may add a brief natural intro but keep the core question intact.
+2. When the respondent gives a clear answer, capture it with a tag on its own line in EXACTLY this format:
+   ##FVM:a1=<complete response with their recommendation>##
+   Use the exact ID shown in brackets. Include their specific numbers or recommendations in the captured value.
+3. After capturing, briefly acknowledge what they said (one sentence), then ask the next unanswered question.
+4. Never re-ask a question already captured.
+5. If the respondent is vague, ask one targeted follow-up before tagging.
+6. Once all 26 questions are answered, congratulate them and let them know the interviewer will send a summary report.
+7. Keep responses to 2–3 sentences maximum.`;
+  }
 
-      <div class="preview-footer">
-        <button class="btn-modify" (click)="rejectForm()">✗ Modify Form</button>
-        <button class="btn-approve" (click)="approveForm()">✓ Approve &amp; Send to Customer</button>
-      </div>
-    </div>
-  </div>
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+  ngOnInit() {}
 
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- PHASE 3 — Send to Customer                             -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <div class="action-screen" *ngIf="phase === CollectorPhase.Send">
-    <div class="action-card">
-      <div class="action-icon">📧</div>
-      <h2>Send Form to Customer</h2>
-      <p>Enter the customer's email. We'll generate a unique link for <strong>{{ generatedForm?.title }}</strong>.</p>
+  ngOnDestroy() {
+    this.clearTimer();
+    this.activeCall?.unsubscribe();
+  }
 
-      <div class="form-group">
-        <label>Customer Email Address</label>
-        <input type="email" [(ngModel)]="customerEmail" placeholder="customer@example.com" class="form-input" />
-      </div>
+  ngAfterViewChecked() {
+    if (this.scrollPending) {
+      try {
+        if (this.chatContainer) {
+          this.chatContainer.nativeElement.scrollTop = this.chatContainer.nativeElement.scrollHeight;
+        }
+      } catch (e) {}
+      this.scrollPending = false;
+    }
+  }
 
-      <button class="btn-primary" (click)="sendToCustomer()" [disabled]="!customerEmail.trim()">
-        Generate Link →
-      </button>
-      <button class="btn-text" (click)="phase = CollectorPhase.FormPreview">← Back to Preview</button>
-    </div>
-  </div>
+  private startTimer(fn: () => void) {
+    this.clearTimer();
+    this.timeoutHandle = setTimeout(fn, this.AI_TIMEOUT_MS);
+  }
 
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- PHASE 4 — Sent / Link Ready                            -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <div class="action-screen" *ngIf="phase === CollectorPhase.Sent">
-    <div class="action-card sent-card">
-      <div class="action-icon">✅</div>
-      <h2>Form Ready!</h2>
-      <p>Share this unique link with <strong>{{ customerEmail }}</strong>.</p>
+  private clearTimer() {
+    if (this.timeoutHandle !== null) { clearTimeout(this.timeoutHandle); this.timeoutHandle = null; }
+  }
 
-      <div class="link-box">
-        <span class="link-text">{{ generatedLink }}</span>
-        <button class="copy-btn" (click)="copyLink()">{{ linkCopied ? 'Copied!' : 'Copy' }}</button>
-      </div>
+  // ── Start ─────────────────────────────────────────────────────────────────
+  startInterview() {
+    if (!this.interviewerName.trim() || !this.respondentName.trim() || !this.respondentRole.trim()) return;
+    this.started = true;
+    this.phase   = FvmPhase.Interview;
+    const intro  = `Hello, I'm ready to begin the FVM assumptions validation session.`;
+    this.messages.push({ role: 'user', text: intro });
+    this.scrollPending = true;
+    this.callAI();
+  }
 
-      <div class="sent-actions">
-        <a [href]="mailtoHref" class="btn-mailto">📧 Open Email Client</a>
-        <button class="btn-primary-sm" (click)="newCollection()">+ New Form</button>
-      </div>
+  // ── Chat ──────────────────────────────────────────────────────────────────
+  sendMessage() {
+    if (!this.userInput.trim()) return;
+    const text    = this.userInput.trim();
+    this.userInput = '';
 
-      <div class="sent-note">
-        The customer will fill out the form at that link and can download their responses as a CSV/Excel file.
-      </div>
-    </div>
-  </div>
+    if (this.isLoading) {
+      this.pendingMessages.push(text);
+      this.messages.push({ role: 'user', text });
+      this.scrollPending = true;
+      return;
+    }
 
-</div>
+    this.isStuck = false;
+    this.messages.push({ role: 'user', text });
+    this.scrollPending = true;
+    this.callAI();
+  }
+
+  callAI() {
+    this.activeCall?.unsubscribe();
+    this.isLoading = true;
+    this.isStuck   = false;
+
+    this.startTimer(() => {
+      if (this.isLoading) {
+        this.activeCall?.unsubscribe();
+        this.activeCall    = null;
+        this.isLoading     = false;
+        this.isStuck       = true;
+        this.pendingMessages = [];
+        this.scrollPending = true;
+      }
+    });
+
+    this.activeCall = this.gemini
+      .sendMessageWithSystemPrompt(this.messages, this.systemPrompt)
+      .subscribe({
+        next: (res: any) => {
+          this.clearTimer();
+          const raw = res.choices[0].message.content;
+          this.parseAnswers(raw);
+          const display = raw.replace(/##FVM:[^#]+##/g, '').trim();
+          this.messages.push({ role: 'model', text: display });
+          this.scrollPending = true;
+          this.isLoading  = false;
+          this.activeCall = null;
+
+          if (this.pendingMessages.length > 0) {
+            this.pendingMessages = [];
+            this.callAI();
+          }
+        },
+        error: () => {
+          this.clearTimer();
+          this.isLoading  = false;
+          this.activeCall = null;
+          this.pendingMessages = [];
+          this.messages.push({ role: 'model', text: 'Sorry, I encountered an error. Please try again.' });
+          this.scrollPending = true;
+        }
+      });
+  }
+
+  retryAI() {
+    this.isStuck = false;
+    this.callAI();
+  }
+
+  parseAnswers(text: string) {
+    const regex = /##FVM:([a-z0-9]+)\s*=\s*([^#\n]+)##/gi;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      this.answers[match[1].trim().toLowerCase()] = match[2].trim();
+    }
+  }
+
+  onKeyPress(e: KeyboardEvent) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendMessage(); }
+  }
+
+  // ── Send report ───────────────────────────────────────────────────────────
+  proceedToSend() {
+    this.phase = FvmPhase.Send;
+  }
+
+  sendReport() {
+    if (!this.recipientEmail.trim() || this.isSendingReport) return;
+    this.isSendingReport    = true;
+    this.isGeneratingReport = true;
+
+    // Build AI summary prompt
+    const answeredRows = this.questions
+      .filter(q => this.answers[q.id])
+      .map(q => `[${q.section}] ${q.shortLabel}: ${this.answers[q.id]}`)
+      .join('\n');
+
+    const summaryPrompt = `You are summarising an FVM (Feature Value Matrix) assumptions validation interview conducted with ${this.respondentName}, ${this.respondentRole}.
+
+CAPTURED RESPONSES:
+${answeredRows}
+
+Write a concise executive summary (3–5 sentences) covering: key agreements with current assumptions, notable recommendations for changes, and any significant new insights provided. Be specific — include numbers where relevant. Address the summary to the interviewer (${this.interviewerName}).`;
+
+    const summaryMsgs: Message[] = [{ role: 'user', text: summaryPrompt }];
+    const summarySys = 'You write concise executive summaries of business interviews. Be specific and include numbers.';
+
+    const summaryTimeout = setTimeout(() => {
+      this.isGeneratingReport = false;
+      this.dispatchEmail('');
+    }, 12000);
+
+    this.gemini.sendMessageWithSystemPrompt(summaryMsgs, summarySys).subscribe({
+      next: (res: any) => {
+        clearTimeout(summaryTimeout);
+        this.isGeneratingReport = false;
+        const summary = res.choices[0].message.content ?? '';
+        this.dispatchEmail(summary);
+      },
+      error: () => {
+        clearTimeout(summaryTimeout);
+        this.isGeneratingReport = false;
+        this.dispatchEmail('');
+      }
+    });
+  }
+
+  private dispatchEmail(summary: string) {
+    const responses: { question: string; answer: string }[] = [
+      ...(summary ? [{ question: 'Executive Summary', answer: summary }] : []),
+      ...this.questions.map(q => ({
+        question: `[${q.section}] ${q.shortLabel} — ${q.fullQuestion}`,
+        answer:   this.answers[q.id] || '(not answered)'
+      }))
+    ];
+
+    this.http.post(`${this.apiBase}/api/email/send-responses`, {
+      to:        this.recipientEmail,
+      formTitle: `FVM Assumptions Validation — ${this.respondentName} (${this.respondentRole})`,
+      responses
+    }).subscribe({
+      next:  () => { this.isSendingReport = false; this.phase = FvmPhase.Sent; },
+      error: () => { this.isSendingReport = false; this.phase = FvmPhase.Sent; }
+    });
+  }
+
+  get sendBtnLabel(): string {
+    if (this.isGeneratingReport) return 'Generating summary…';
+    if (this.isSendingReport)    return 'Sending…';
+    return 'Send Report →';
+  }
+
+  startOver() {
+    this.activeCall?.unsubscribe();
+    this.activeCall      = null;
+    this.phase           = FvmPhase.Start;
+    this.messages        = [];
+    this.answers         = {};
+    this.userInput       = '';
+    this.isLoading       = false;
+    this.isStuck         = false;
+    this.started         = false;
+    this.pendingMessages = [];
+    this.interviewerName = '';
+    this.respondentName  = '';
+    this.respondentRole  = '';
+    this.recipientEmail  = '';
+    this.isSendingReport = false;
+  }
+}
