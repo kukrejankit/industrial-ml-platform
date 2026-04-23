@@ -1,19 +1,82 @@
-<div class="stats-row">
-  <div class="stat-card"><div class="n">{{assets.length}}</div><div class="l">Assets</div></div>
-  <div class="stat-card critical"><div class="n">{{critical}}</div><div class="l">Critical</div></div>
-  <div class="stat-card warning"><div class="n">{{warning}}</div><div class="l">Warning</div></div>
-  <div class="stat-card normal"><div class="n">{{normal}}</div><div class="l">Normal</div></div>
-</div>
+<div style="padding: 20px; max-width: 1200px; margin: 0 auto;">
 
-<div class="asset-grid">
-  <div *ngFor="let a of assets" class="asset-card" [class]="a.status"
-       [routerLink]="['/assets', a.id]">
-    <div class="asset-name">{{a.name}}</div>
-    <div class="asset-type">{{a.assetType}}</div>
-    <div class="health" [style.color]="healthColor(a.healthScore)">
-      {{a.healthScore | number:'1.0-0'}}%
-    </div>
-    <div class="rul" *ngIf="a.rulDays">RUL: {{a.rulDays}} days</div>
-    <span class="badge" [class]="a.status">{{a.status | uppercase}}</span>
+  <!-- Loading -->
+  <div *ngIf="loading" style="text-align:center; padding:80px 0; color:#64748b; font-size:15px;">
+    Loading assets…
   </div>
+
+  <!-- Empty state -->
+  <div *ngIf="!loading && hasLoaded && assets.length === 0"
+    style="text-align:center; padding:80px 24px;">
+    <div style="font-size:48px; margin-bottom:16px;">🏭</div>
+    <h2 style="margin:0 0 8px; color:#0f172a; font-size:22px;">No assets yet</h2>
+    <p style="color:#64748b; margin:0 0 28px; font-size:14px;">
+      Load demo pump data to explore the dashboard and AI health calculator.
+    </p>
+    <button
+      (click)="seedDemo()"
+      [disabled]="seeding"
+      style="background:#0f766e;color:white;border:none;border-radius:8px;padding:12px 28px;font-size:15px;font-weight:600;cursor:pointer;opacity:1"
+      [style.opacity]="seeding ? '0.7' : '1'">
+      {{ seeding ? 'Loading demo data…' : '⚙ Load Demo Pump Data' }}
+    </button>
+  </div>
+
+  <!-- Dashboard content -->
+  <div *ngIf="assets.length > 0">
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px;">
+      <div style="background:white;border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);text-align:center;">
+        <div style="font-size:32px;font-weight:700;color:#0f172a;">{{assets.length}}</div>
+        <div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;">Total Assets</div>
+      </div>
+      <div style="background:white;border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);text-align:center;border-top:3px solid #dc2626;">
+        <div style="font-size:32px;font-weight:700;color:#dc2626;">{{critical}}</div>
+        <div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;">Critical</div>
+      </div>
+      <div style="background:white;border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);text-align:center;border-top:3px solid #d97706;">
+        <div style="font-size:32px;font-weight:700;color:#d97706;">{{warning}}</div>
+        <div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;">Warning</div>
+      </div>
+      <div style="background:white;border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);text-align:center;border-top:3px solid #16a34a;">
+        <div style="font-size:32px;font-weight:700;color:#16a34a;">{{normal}}</div>
+        <div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;">Normal</div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px;">
+      <div *ngFor="let a of assets"
+        [routerLink]="['/assets', a.id]"
+        style="background:white;border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;transition:box-shadow 0.15s;border-left:4px solid"
+        [style.borderLeftColor]="healthColor(a.healthScore)"
+        (mouseenter)="$event.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)'"
+        (mouseleave)="$event.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,0.08)'">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+          <div>
+            <div style="font-size:15px;font-weight:700;color:#0f172a;">{{a.name}}</div>
+            <div style="font-size:12px;color:#64748b;margin-top:2px;">{{a.assetType}}</div>
+          </div>
+          <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;text-transform:uppercase;"
+            [style.background]="a.status==='critical'?'#fee2e2':a.status==='warning'?'#fef3c7':'#dcfce7'"
+            [style.color]="a.status==='critical'?'#dc2626':a.status==='warning'?'#ca8a04':'#16a34a'">
+            {{a.status}}
+          </span>
+        </div>
+        <div style="font-size:36px;font-weight:700;margin-bottom:4px;"
+          [style.color]="healthColor(a.healthScore)">
+          {{a.healthScore | number:'1.0-0'}}%
+        </div>
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:12px;">Health Score</div>
+        <div style="height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-bottom:10px;">
+          <div style="height:100%;border-radius:3px;transition:width 0.5s"
+            [style.width]="a.healthScore + '%'"
+            [style.background]="healthColor(a.healthScore)">
+          </div>
+        </div>
+        <div style="font-size:12px;color:#64748b;" *ngIf="a.rulDays">
+          RUL: <strong>{{a.rulDays}} days</strong> remaining
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
