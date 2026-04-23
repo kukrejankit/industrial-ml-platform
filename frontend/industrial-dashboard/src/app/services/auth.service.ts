@@ -21,6 +21,11 @@ export class AuthService {
       `${environment.apiUrl}/auth/login`, { email, password });
   }
 
+  register(email: string, password: string, fullName: string, companyName: string) {
+    return this.http.post<any>(
+      `${environment.apiUrl}/auth/register`, { email, password, fullName, companyName });
+  }
+
   setSession(res: any) {
     this.token.set(res.token);
     this.currentUser.set(res.user);
