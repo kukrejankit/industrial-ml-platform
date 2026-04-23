@@ -1,3 +1,15 @@
+<style>
+.asset-card {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+  border-left: 4px solid;
+}
+.asset-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+</style>
 <div style="padding: 20px; max-width: 1200px; margin: 0 auto;">
 
   <!-- Loading -->
@@ -46,10 +58,8 @@
     <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px;">
       <div *ngFor="let a of assets"
         [routerLink]="['/assets', a.id]"
-        style="background:white;border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;transition:box-shadow 0.15s;border-left:4px solid"
-        [style.borderLeftColor]="healthColor(a.healthScore)"
-        (mouseenter)="$event.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)'"
-        (mouseleave)="$event.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,0.08)'">
+        class="asset-card"
+        [style.borderLeftColor]="healthColor(a.healthScore)">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
           <div>
             <div style="font-size:15px;font-weight:700;color:#0f172a;">{{a.name}}</div>
