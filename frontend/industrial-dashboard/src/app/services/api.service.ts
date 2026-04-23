@@ -17,6 +17,14 @@ export class ApiService {
   private http = inject(HttpClient);
   private base = environment.apiUrl;
 
+  getMyAssets(): Observable<Asset[]> {
+    return this.http.get<Asset[]>(`${this.base}/assets/mine`);
+  }
+
+  seedDemoAssets(): Observable<any> {
+    return this.http.post(`${this.base}/assets/seed-demo`, {});
+  }
+
   getAssets(siteId: number): Observable<Asset[]> {
     return this.http.get<Asset[]>(`${this.base}/assets`,
       { params: { siteId: siteId.toString() } });
