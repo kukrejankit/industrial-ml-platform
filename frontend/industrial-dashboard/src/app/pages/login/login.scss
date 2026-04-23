@@ -130,6 +130,42 @@
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.tab-row {
+  display: flex;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 24px;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: #94a3b8;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+
+  &.active {
+    color: #0f766e;
+    border-bottom-color: #0f766e;
+  }
+
+  &:hover:not(.active) { color: #374151; }
+}
+
+.success-msg {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #16a34a;
+}
+
 .login-footer {
   margin-top: 24px;
   text-align: center;
