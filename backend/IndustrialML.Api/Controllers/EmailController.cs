@@ -63,37 +63,57 @@ public class EmailController : ControllerBase
 
     private static string BuildEmailHtml(SendResponsesRequest req)
     {
-        var title = WebUtility.HtmlEncode(req.FormTitle);
-        var sb    = new StringBuilder();
+        var title    = WebUtility.HtmlEncode(req.FormTitle);
+        var sentAt   = DateTime.UtcNow.ToString("dd MMM yyyy, HH:mm UTC");
+        var sb       = new StringBuilder();
 
         sb.Append($@"<html>
-<body style='font-family:Arial,sans-serif;color:#1e293b;padding:24px;'>
-  <h2 style='color:#0f766e;margin:0 0 4px;'>Form Responses</h2>
-  <p style='color:#64748b;margin:0 0 24px;font-size:14px;'>{title}</p>
-  <table style='border-collapse:collapse;width:100%;max-width:640px;'>
-    <thead>
-      <tr style='background:#0f766e;color:white;'>
-        <th style='padding:10px 16px;text-align:left;font-size:13px;'>Question</th>
-        <th style='padding:10px 16px;text-align:left;font-size:13px;'>Answer</th>
-      </tr>
-    </thead>
-    <tbody>");
+<body style='font-family:Arial,sans-serif;color:#1e293b;padding:0;margin:0;background:#f8fafc;'>
+  <div style='max-width:680px;margin:0 auto;padding:32px 16px;'>
+
+    <!-- Header -->
+    <div style='background:linear-gradient(135deg,#1e3a5f 0%,#0f766e 100%);border-radius:12px 12px 0 0;padding:28px 32px;'>
+      <div style='color:white;font-size:22px;font-weight:700;margin:0 0 6px;'>Form Responses</div>
+      <div style='color:rgba(255,255,255,0.8);font-size:14px;'>{title}</div>
+      <div style='color:rgba(255,255,255,0.55);font-size:12px;margin-top:6px;'>Submitted {sentAt}</div>
+    </div>
+
+    <!-- Body -->
+    <div style='background:white;border-radius:0 0 12px 12px;border:1px solid #e2e8f0;border-top:none;padding:8px 0 24px;'>
+");
 
         for (int i = 0; i < req.Responses.Count; i++)
         {
-            var row = req.Responses[i];
-            var bg  = i % 2 == 0 ? "#f8fafc" : "#ffffff";
+            var row    = req.Responses[i];
+            var bg     = i % 2 == 0 ? "#f8fafc" : "#ffffff";
+            var border = i < req.Responses.Count - 1 ? "border-bottom:1px solid #e2e8f0;" : "";
+            // Convert newlines to <br> for multi-sentence answers
+            var answerHtml = WebUtility.HtmlEncode(row.Answer)
+                .Replace("&#xA;", "<br>")
+                .Replace("\n", "<br>");
+
             sb.Append($@"
-      <tr style='background:{bg};'>
-        <td style='padding:10px 16px;border-bottom:1px solid #e2e8f0;font-weight:600;font-size:13px;width:40%;'>{WebUtility.HtmlEncode(row.Question)}</td>
-        <td style='padding:10px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;'>{WebUtility.HtmlEncode(row.Answer)}</td>
-      </tr>");
+      <div style='padding:18px 32px;background:{bg};{border}'>
+        <div style='font-size:12px;font-weight:700;color:#0f766e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;'>
+          Q{i + 1} · {WebUtility.HtmlEncode(row.Question)}
+        </div>
+        <div style='font-size:14px;color:#1e293b;line-height:1.7;'>
+          {answerHtml}
+        </div>
+      </div>");
         }
 
-        sb.Append(@"
-    </tbody>
-  </table>
-  <p style='color:#94a3b8;font-size:11px;margin-top:24px;'>Sent via Industrial ML Platform · Client Data Collector</p>
+        sb.Append($@"
+    </div>
+
+    <!-- Footer -->
+    <div style='text-align:center;padding:20px 0 0;'>
+      <p style='color:#94a3b8;font-size:11px;margin:0;'>
+        Sent via Industrial ML Platform · Client Data Collector · {sentAt}
+      </p>
+    </div>
+
+  </div>
 </body>
 </html>");
 
