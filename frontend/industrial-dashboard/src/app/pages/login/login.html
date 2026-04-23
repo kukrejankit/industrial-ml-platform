@@ -1,0 +1,52 @@
+<div class="login-page">
+  <div class="login-card">
+
+    <div class="login-brand">
+      <div class="brand-icon">⚙</div>
+      <div>
+        <h1>Industrial ML</h1>
+        <p>Asset Intelligence Platform</p>
+      </div>
+    </div>
+
+    <div class="login-form">
+      <div class="form-group">
+        <label>Email Address</label>
+        <input
+          type="email"
+          [(ngModel)]="email"
+          (keydown)="onKey($event)"
+          placeholder="plant@company.com"
+          class="form-input"
+          [disabled]="loading" />
+      </div>
+
+      <div class="form-group">
+        <label>Password</label>
+        <input
+          type="password"
+          [(ngModel)]="password"
+          (keydown)="onKey($event)"
+          placeholder="••••••••"
+          class="form-input"
+          [disabled]="loading" />
+      </div>
+
+      <div class="error-msg" *ngIf="error">{{ error }}</div>
+
+      <button
+        class="login-btn"
+        (click)="submit()"
+        [disabled]="!email.trim() || !password || loading">
+        <span *ngIf="!loading">Sign In →</span>
+        <span *ngIf="loading" class="spinner-wrap">
+          <span class="btn-spinner"></span> Signing in…
+        </span>
+      </button>
+    </div>
+
+    <div class="login-footer">
+      Each plant site has its own login credentials.
+    </div>
+  </div>
+</div>
