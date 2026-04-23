@@ -85,7 +85,7 @@ export class FvmDataRequestComponent implements OnInit, OnDestroy, AfterViewChec
   private timeoutHandle:   any = null;
   private pendingMessages: string[] = [];
   private scrollPending    = false;
-  private readonly AI_TIMEOUT_MS = 10000;
+  private readonly AI_TIMEOUT_MS = 25000;
 
   // Send state
   recipientEmail   = '';
