@@ -14,28 +14,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   private rt  = inject(RealtimeService);
 
-  assets: Asset[] = [];
+  assets:   Asset[] = [];
+  loading   = true;
+  seeding   = false;
+  hasLoaded = false;
+
   private pollInterval: any;
 
-  get critical() {
-    return this.assets.filter(a => a.status === 'critical').length;
-  }
-  get warning() {
-    return this.assets.filter(a => a.status === 'warning').length;
-  }
-  get normal() {
-    return this.assets.filter(a => a.status === 'normal').length;
-  }
+  get critical() { return this.assets.filter(a => a.status === 'critical').length; }
+  get warning()  { return this.assets.filter(a => a.status === 'warning').length; }
+  get normal()   { return this.assets.filter(a => a.status === 'normal').length; }
 
   ngOnInit() {
     this.loadAssets();
+    this.pollInterval = setInterval(() => this.loadAssets(), 5000);
 
-    // Poll every 5 seconds
-    this.pollInterval = setInterval(() => {
-      this.loadAssets();
-    }, 5000);
-
-    // Also listen for SignalR updates
     this.rt.connect();
     this.rt.assetUpdated$.subscribe((update: any) => {
       const asset = this.assets.find(a => a.id === update.assetId);
@@ -47,13 +40,35 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   loadAssets() {
-    this.api.getAssets(1).subscribe(a => this.assets = a);
+    this.api.getMyAssets().subscribe({
+      next: a => {
+        this.assets   = a;
+        this.loading  = false;
+        this.hasLoaded = true;
+      },
+      error: () => {
+        this.loading  = false;
+        this.hasLoaded = true;
+      }
+    });
+  }
+
+  seedDemo() {
+    this.seeding = true;
+    this.api.seedDemoAssets().subscribe({
+      next: () => {
+        this.seeding = false;
+        this.loadAssets();
+      },
+      error: () => {
+        this.seeding = false;
+        this.loadAssets();
+      }
+    });
   }
 
   ngOnDestroy() {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-    }
+    if (this.pollInterval) clearInterval(this.pollInterval);
   }
 
   healthColor(score: number): string {
