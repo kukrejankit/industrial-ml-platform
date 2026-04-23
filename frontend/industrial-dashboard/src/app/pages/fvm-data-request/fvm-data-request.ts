@@ -1,45 +1,54 @@
 import { Component, OnInit, OnDestroy, inject, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { Subscription } from 'rxjs';
 import { GeminiService, Message } from '../../services/gemini.service';
 
-export type QuestionType = 'text' | 'textarea' | 'email' | 'phone' | 'number' | 'date' | 'select' | 'radio' | 'checkbox';
-
-export interface FormQuestion {
+export interface FvmQuestion {
   id: string;
-  label: string;
-  type: QuestionType;
-  required: boolean;
-  placeholder?: string;
-  options?: string[];
+  section: 'Assumptions' | 'Magnitudes';
+  shortLabel: string;
+  fullQuestion: string;
 }
 
-export interface FormDefinition {
-  title: string;
-  description: string;
-  questions: FormQuestion[];
-}
+export const FVM_QUESTIONS: FvmQuestion[] = [
+  // ── Assumptions ───────────────────────────────────────────────────────────
+  { id: 'a1',  section: 'Assumptions', shortLabel: 'CSAT → ARPU lift',               fullQuestion: "We're currently assuming $0.20 annual ARPU lift per customer for every 1 basis point improvement in CSAT. Does that sound right to you, and what would you recommend?" },
+  { id: 'a2',  section: 'Assumptions', shortLabel: 'Engagement → ARPU lift',         fullQuestion: "We're currently assuming $0.02 annual ARPU lift per customer for every 1 basis point improvement in app engagement. Does that sound right to you, and what would you recommend?" },
+  { id: 'a3',  section: 'Assumptions', shortLabel: 'Cost per support contact',        fullQuestion: "We're currently using $5.07 as the fully loaded average cost per support contact (sourced from the SHM monthly report). Does that align with what you're seeing, and what would you suggest?" },
+  { id: 'a4',  section: 'Assumptions', shortLabel: 'Wireless postpaid ARPU',          fullQuestion: "We're currently using $57/month as the average ARPU for wireless postpaid per line. What would you use, and why?" },
+  { id: 'a5',  section: 'Assumptions', shortLabel: 'Fiber ARPU',                      fullQuestion: "We're currently using $65/month as the average ARPU for Fiber per subscriber. What would you use, and why?" },
+  { id: 'a6',  section: 'Assumptions', shortLabel: 'AIA ARPU',                        fullQuestion: "We're currently using $55/month as the average ARPU for AIA per subscriber. What would you use, and why?" },
+  { id: 'a7',  section: 'Assumptions', shortLabel: 'Second service revenue',          fullQuestion: "We're currently assuming $45/month in incremental revenue when a customer adds a second AT&T service. Does that feel accurate, and what's your read?" },
+  { id: 'a8',  section: 'Assumptions', shortLabel: 'Upsell / add-on value',           fullQuestion: "We're currently using $8/month as the average value of an upsell or add-on per customer. What would you recommend, and what drives that number for you?" },
+  { id: 'a9',  section: 'Assumptions', shortLabel: 'At-risk churn rate',              fullQuestion: "We're currently assuming 1% of the eligible base is at risk of churning at any given time. Does that reflect your experience, and what would you change?" },
+  { id: 'a10', section: 'Assumptions', shortLabel: 'Single-service base',             fullQuestion: "We're currently assuming 60% of the eligible base is single-service (i.e., not yet converged), sourced from the BC. Does that track, and what's your current view?" },
+  { id: 'a11', section: 'Assumptions', shortLabel: 'Support contact rate',            fullQuestion: "We're currently assuming 0.8 support contacts per customer per year as the baseline contact rate. What would you use, and what's driving that for you?" },
+  { id: 'a12', section: 'Assumptions', shortLabel: 'Digital transaction savings',     fullQuestion: "We're currently estimating $12 in savings per transaction shifted from retail to digital. Does that feel right, and what would you use?" },
+  { id: 'a13', section: 'Assumptions', shortLabel: 'Retail transactions per customer',fullQuestion: "We're currently assuming 0.3 retail transactions per customer per year. What's your estimate, and what's that based on?" },
+  { id: 'a14', section: 'Assumptions', shortLabel: 'Resource cost per day',           fullQuestion: "We're currently using $360/day as the fully loaded resource cost to build a feature. What would you recommend, and how are you thinking about that?" },
+  { id: 'a15', section: 'Assumptions', shortLabel: 'Feature build time range',        fullQuestion: "We're currently modeling feature build time as 0 to 5 weeks. Does that match your teams' experience, and what range would you suggest?" },
 
-export interface StoredForm {
-  id: string;
-  createdAt: string;
-  requesterEmail?: string;
-  form: FormDefinition;
-}
+  // ── Magnitudes ────────────────────────────────────────────────────────────
+  { id: 'm1',  section: 'Magnitudes',  shortLabel: 'Gross adds lift',                 fullQuestion: "For features customers actually adopt, we're currently modeling a gross adds lift of 0 to 0.3% of adopting customers. What magnitude have you seen in practice, and what would you recommend?" },
+  { id: 'm2',  section: 'Magnitudes',  shortLabel: 'Convergence uplift',              fullQuestion: "For convergence uplift, we're modeling 0 to 0.3% of adopting customers converting from single- to multi-service. Does that feel like the right range to you?" },
+  { id: 'm3',  section: 'Magnitudes',  shortLabel: 'Churn save rate',                 fullQuestion: "For churn saves, we're modeling a 0 to 15% reduction in churn attributable to a feature. What range reflects your experience?" },
+  { id: 'm4',  section: 'Magnitudes',  shortLabel: 'ARPU expansion',                  fullQuestion: "For ARPU expansion through add-ons, upsells, or upgrades, we're using 0 to 2%. What would you peg this at, and why?" },
+  { id: 'm5',  section: 'Magnitudes',  shortLabel: 'Call shed',                       fullQuestion: "For call shed, we're modeling 0 to 20% of inbound support contacts deflected by a feature. What range would you use?" },
+  { id: 'm6',  section: 'Magnitudes',  shortLabel: 'Digital sales shift',             fullQuestion: "For digital sales shift, we're modeling 0 to 20% of retail transactions moving to digital through a feature. Does that feel right?" },
+  { id: 'm7',  section: 'Magnitudes',  shortLabel: 'CX uplift (CSAT bps)',            fullQuestion: "For customer experience uplift, we're modeling 0 to 0.6 basis points of CSAT improvement per feature. What's your sense of a realistic range?" },
+  { id: 'm8',  section: 'Magnitudes',  shortLabel: 'Friction reduction (CSAT bps)',   fullQuestion: "For friction reduction, we're also modeling 0 to 0.6 basis points of CSAT improvement. Does that align with what you'd expect, and would you separate it from experience uplift?" },
+  { id: 'm9',  section: 'Magnitudes',  shortLabel: 'Engagement → revenue conversion', fullQuestion: "We don't yet have a way to translate MAU or DAU/MAU engagement metrics into dollar value. How would you approach converting engagement signals into revenue impact?" },
+  { id: 'm10', section: 'Magnitudes',  shortLabel: 'Story points → cost',             fullQuestion: "We don't currently have a conversion from story points to dollar value. How would you translate a story point estimate into a cost or effort value?" },
+  { id: 'm11', section: 'Magnitudes',  shortLabel: 'T-shirt sizing → cost',           fullQuestion: "We don't currently have a dollar mapping for T-shirt sizing. How would you assign a dollar value to each T-shirt size — S, M, L, XL — for feature build effort?" },
+];
 
-export enum CollectorPhase {
-  SetupChat = 1,
-  FormPreview = 2,
-  Send = 3,
-  Sent = 4
-}
-
-interface ProgressField {
-  key: string;
-  label: string;
-  description: string;
-  value: string | null;
+export enum FvmPhase {
+  Start     = 1,
+  Interview = 2,
+  Send      = 3,
+  Sent      = 4
 }
 
 @Component({
@@ -51,99 +60,81 @@ interface ProgressField {
 })
 export class FvmDataRequestComponent implements OnInit, OnDestroy, AfterViewChecked {
   private gemini = inject(GeminiService);
+  private http   = inject(HttpClient);
 
   @ViewChild('chatContainer') chatContainer!: ElementRef;
 
-  CollectorPhase = CollectorPhase;
-  phase: CollectorPhase = CollectorPhase.SetupChat;
+  FvmPhase      = FvmPhase;
+  phase         = FvmPhase.Start;
+  questions     = FVM_QUESTIONS;
 
-  // Phase 1 state
-  messages: Message[] = [];
-  userInput = '';
-  isLoading = false;
-  isStuck = false;
-  isGeneratingForm = false;
-  isGenerateStuck = false;
-  formParseError = false;
+  // Start screen
   interviewerName = '';
-  interviewerEmail = '';
-  started = false;
+  respondentName  = '';
+  respondentRole  = '';
 
-  private activeCall: Subscription | null = null;
-  private timeoutHandle: any = null;
+  // Interview state
+  messages: Message[]           = [];
+  answers: Record<string, string> = {};
+  userInput  = '';
+  isLoading  = false;
+  isStuck    = false;
+  started    = false;
+
+  private activeCall:      Subscription | null = null;
+  private timeoutHandle:   any = null;
   private pendingMessages: string[] = [];
-  private scrollPending = false;
+  private scrollPending    = false;
   private readonly AI_TIMEOUT_MS = 10000;
 
-  progressFields: ProgressField[] = [
-    { key: 'PURPOSE',      label: 'Purpose',       description: 'What the form is for',     value: null },
-    { key: 'AUDIENCE',     label: 'Audience',       description: 'Who will fill it out',     value: null },
-    { key: 'FIELDS',       label: 'Fields',         description: 'Data points to collect',   value: null },
-    { key: 'REQUIREMENTS', label: 'Requirements',   description: 'Mandatory fields / rules', value: null },
-  ];
+  // Send state
+  recipientEmail   = '';
+  isSendingReport  = false;
+  isGeneratingReport = false;
+  linkCopied       = false;
 
-  // Phase 2 state
-  generatedForm: FormDefinition | null = null;
+  private readonly apiBase = 'https://industrial-ml-api.azurewebsites.net';
 
-  readonly typeLabels: Record<QuestionType, string> = {
-    text: 'Short Text', textarea: 'Long Text', email: 'Email', phone: 'Phone',
-    number: 'Number', date: 'Date', select: 'Dropdown', radio: 'Multiple Choice', checkbox: 'Checkboxes'
-  };
+  // ── Computed ──────────────────────────────────────────────────────────────
+  get answeredCount()   { return Object.keys(this.answers).length; }
+  get totalQuestions()  { return this.questions.length; }
+  get progressPercent() { return Math.round(this.answeredCount / this.totalQuestions * 100); }
+  get assumptionsDone() { return this.questions.filter(q => q.section === 'Assumptions' && this.answers[q.id]).length; }
+  get magnitudesDone()  { return this.questions.filter(q => q.section === 'Magnitudes'  && this.answers[q.id]).length; }
+  get allDone()         { return this.answeredCount === this.totalQuestions; }
 
-  // Phase 3 state
-  customerEmail = '';
-  generatedLink = '';
-  storedFormId = '';
-  linkCopied = false;
+  isAnswered(q: FvmQuestion) { return !!this.answers[q.id]; }
 
-  private readonly setupSystemPrompt = `You are a friendly data collection specialist helping a business owner design a customer data collection form. Your job is to gather four pieces of information through natural conversation, one at a time.
+  get systemPrompt(): string {
+    const qList = this.questions.map((q, i) =>
+      `${i + 1}. [ID: ${q.id}] ${q.fullQuestion}`
+    ).join('\n\n');
 
-INFORMATION TO COLLECT (in this order):
-1. PURPOSE — What is the business purpose of collecting this data? What decision or process will it drive?
-2. AUDIENCE — Who are the customers or end-users that will fill out this form?
-3. FIELDS — What specific pieces of information need to be collected? Ask them to list all the data points they need.
-4. REQUIREMENTS — Are there any minimum requirements or constraints? (e.g., "email is mandatory", "must collect phone number")
+    return `You are conducting a structured FVM (Feature Value Matrix) assumptions validation interview on behalf of ${this.interviewerName}. You are speaking with ${this.respondentName}, ${this.respondentRole}.
+
+Your role is to go through each question below one at a time, in order, in a professional and collaborative tone. These are expert business stakeholders — be concise and respect their time.
+
+QUESTIONS TO COVER (ask in this exact order):
+${qList}
 
 RULES:
-1. Ask one question at a time in a conversational, friendly tone.
-2. When the user answers a question, extract the key information and output a tag in EXACTLY this format:
-   ##CAPTURED:PURPOSE=<value>##
-   ##CAPTURED:AUDIENCE=<value>##
-   ##CAPTURED:FIELDS=<value>##
-   ##CAPTURED:REQUIREMENTS=<value>##
-   Use the exact field key. Keep the captured value concise (1–2 sentences max).
-3. After capturing a field, confirm briefly what you understood, then ask the next uncaptured question.
-4. Never ask about a field already captured.
-5. Once PURPOSE and FIELDS are captured, let the user know they can click "Generate Form" when ready.
-6. Be concise — 2–4 sentences per response maximum.`;
-
-  get capturedCount() {
-    return this.progressFields.filter(f => f.value !== null).length;
+1. Ask one question at a time, exactly as written above. You may add a brief natural intro but keep the core question intact.
+2. When the respondent gives a clear answer, capture it with a tag on its own line in EXACTLY this format:
+   ##FVM:a1=<complete response with their recommendation>##
+   Use the exact ID shown in brackets. Include their specific numbers or recommendations in the captured value.
+3. After capturing, briefly acknowledge what they said (one sentence), then ask the next unanswered question.
+4. Never re-ask a question already captured.
+5. If the respondent is vague, ask one targeted follow-up before tagging.
+6. Once all 26 questions are answered, congratulate them and let them know the interviewer will send a summary report.
+7. Keep responses to 2–3 sentences maximum.`;
   }
 
-  get canGenerateForm() {
-    const purpose = this.progressFields.find(f => f.key === 'PURPOSE')?.value;
-    const fields  = this.progressFields.find(f => f.key === 'FIELDS')?.value;
-    return !!purpose && !!fields && !this.isLoading && !this.isGeneratingForm && !this.isStuck;
-  }
-
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
   ngOnInit() {}
 
   ngOnDestroy() {
     this.clearTimer();
     this.activeCall?.unsubscribe();
-  }
-
-  private startTimer(onTimeout: () => void) {
-    this.clearTimer();
-    this.timeoutHandle = setTimeout(onTimeout, this.AI_TIMEOUT_MS);
-  }
-
-  private clearTimer() {
-    if (this.timeoutHandle !== null) {
-      clearTimeout(this.timeoutHandle);
-      this.timeoutHandle = null;
-    }
   }
 
   ngAfterViewChecked() {
@@ -157,18 +148,30 @@ RULES:
     }
   }
 
-  startSetup() {
-    if (!this.interviewerName.trim() || !this.interviewerEmail.trim()) return;
-    this.started = true;
-    const intro = `Hi, I'm ${this.interviewerName}. I need help designing a data collection form for my customers.`;
-    this.messages.push({ role: 'user', text: intro });
-    this.scrollPending = true;
-    this.callSetupAI();
+  private startTimer(fn: () => void) {
+    this.clearTimer();
+    this.timeoutHandle = setTimeout(fn, this.AI_TIMEOUT_MS);
   }
 
+  private clearTimer() {
+    if (this.timeoutHandle !== null) { clearTimeout(this.timeoutHandle); this.timeoutHandle = null; }
+  }
+
+  // ── Start ─────────────────────────────────────────────────────────────────
+  startInterview() {
+    if (!this.interviewerName.trim() || !this.respondentName.trim() || !this.respondentRole.trim()) return;
+    this.started = true;
+    this.phase   = FvmPhase.Interview;
+    const intro  = `Hello, I'm ready to begin the FVM assumptions validation session.`;
+    this.messages.push({ role: 'user', text: intro });
+    this.scrollPending = true;
+    this.callAI();
+  }
+
+  // ── Chat ──────────────────────────────────────────────────────────────────
   sendMessage() {
     if (!this.userInput.trim()) return;
-    const text = this.userInput.trim();
+    const text    = this.userInput.trim();
     this.userInput = '';
 
     if (this.isLoading) {
@@ -181,46 +184,46 @@ RULES:
     this.isStuck = false;
     this.messages.push({ role: 'user', text });
     this.scrollPending = true;
-    this.callSetupAI();
+    this.callAI();
   }
 
-  callSetupAI() {
+  callAI() {
     this.activeCall?.unsubscribe();
     this.isLoading = true;
-    this.isStuck = false;
+    this.isStuck   = false;
 
     this.startTimer(() => {
       if (this.isLoading) {
         this.activeCall?.unsubscribe();
-        this.activeCall = null;
-        this.isLoading = false;
-        this.isStuck = true;
+        this.activeCall    = null;
+        this.isLoading     = false;
+        this.isStuck       = true;
         this.pendingMessages = [];
         this.scrollPending = true;
       }
     });
 
     this.activeCall = this.gemini
-      .sendMessageWithSystemPrompt(this.messages, this.setupSystemPrompt)
+      .sendMessageWithSystemPrompt(this.messages, this.systemPrompt)
       .subscribe({
-        next: (response: any) => {
+        next: (res: any) => {
           this.clearTimer();
-          const raw = response.choices[0].message.content;
-          this.parseCapturedFields(raw);
-          const display = raw.replace(/##CAPTURED:[^#]+##/g, '').trim();
+          const raw = res.choices[0].message.content;
+          this.parseAnswers(raw);
+          const display = raw.replace(/##FVM:[^#]+##/g, '').trim();
           this.messages.push({ role: 'model', text: display });
           this.scrollPending = true;
-          this.isLoading = false;
+          this.isLoading  = false;
           this.activeCall = null;
 
           if (this.pendingMessages.length > 0) {
             this.pendingMessages = [];
-            this.callSetupAI();
+            this.callAI();
           }
         },
         error: () => {
           this.clearTimer();
-          this.isLoading = false;
+          this.isLoading  = false;
           this.activeCall = null;
           this.pendingMessages = [];
           this.messages.push({ role: 'model', text: 'Sorry, I encountered an error. Please try again.' });
@@ -229,193 +232,109 @@ RULES:
       });
   }
 
-  retryChatAI() {
+  retryAI() {
     this.isStuck = false;
-    this.callSetupAI();
+    this.callAI();
   }
 
-  parseCapturedFields(text: string) {
-    const regex = /##CAPTURED:([A-Z_]+)=([^#]+)##/g;
+  parseAnswers(text: string) {
+    const regex = /##FVM:([a-z0-9]+)\s*=\s*([^#\n]+)##/gi;
     let match;
     while ((match = regex.exec(text)) !== null) {
-      const key = match[1].trim();
-      const value = match[2].trim();
-      const field = this.progressFields.find(f => f.key === key);
-      if (field) field.value = value;
+      this.answers[match[1].trim().toLowerCase()] = match[2].trim();
     }
   }
 
-  generateForm() {
-    this.isGeneratingForm = true;
-    this.isGenerateStuck = false;
-    this.formParseError = false;
+  onKeyPress(e: KeyboardEvent) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendMessage(); }
+  }
 
-    const captured = this.progressFields
-      .filter(f => f.value !== null)
-      .map(f => `- ${f.label}: ${f.value}`)
+  // ── Send report ───────────────────────────────────────────────────────────
+  proceedToSend() {
+    this.phase = FvmPhase.Send;
+  }
+
+  sendReport() {
+    if (!this.recipientEmail.trim() || this.isSendingReport) return;
+    this.isSendingReport    = true;
+    this.isGeneratingReport = true;
+
+    // Build AI summary prompt
+    const answeredRows = this.questions
+      .filter(q => this.answers[q.id])
+      .map(q => `[${q.section}] ${q.shortLabel}: ${this.answers[q.id]}`)
       .join('\n');
 
-    const conversationContext = this.messages.slice(-6)
-      .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`)
-      .join('\n\n');
+    const summaryPrompt = `You are summarising an FVM (Feature Value Matrix) assumptions validation interview conducted with ${this.respondentName}, ${this.respondentRole}.
 
-    const generationPrompt = `Based on the following data collection requirements, generate a precise JSON form definition.
+CAPTURED RESPONSES:
+${answeredRows}
 
-REQUIREMENTS GATHERED:
-${captured}
+Write a concise executive summary (3–5 sentences) covering: key agreements with current assumptions, notable recommendations for changes, and any significant new insights provided. Be specific — include numbers where relevant. Address the summary to the interviewer (${this.interviewerName}).`;
 
-CONVERSATION CONTEXT:
-${conversationContext}
+    const summaryMsgs: Message[] = [{ role: 'user', text: summaryPrompt }];
+    const summarySys = 'You write concise executive summaries of business interviews. Be specific and include numbers.';
 
-OUTPUT RULES:
-1. Output ONLY a valid JSON object. No markdown, no explanation, no code fences.
-2. Generate between 4 and 12 questions.
-3. Use "email" for email, "phone" for phone, "date" for dates, "number" for quantities, "select" or "radio" for categorical choices (≤6 options), "textarea" for open-ended, "text" for short answers.
-4. Mark fields as required:true when mentioned as mandatory or clearly essential.
-5. CRITICAL: Every question with type "select", "radio", or "checkbox" MUST include an "options" array with at least 3 meaningful, specific string values. Never use these types without options.
-6. Never generate a "select", "radio", or "checkbox" question without a populated "options" array.
+    const summaryTimeout = setTimeout(() => {
+      this.isGeneratingReport = false;
+      this.dispatchEmail('');
+    }, 12000);
 
-REQUIRED JSON SCHEMA:
-{
-  "title": "descriptive form title",
-  "description": "1-sentence description shown to the respondent",
-  "questions": [
-    {
-      "id": "q1",
-      "label": "question text",
-      "type": "text|textarea|email|phone|number|date|select|radio|checkbox",
-      "required": true,
-      "placeholder": "hint text (omit for select/radio/checkbox)",
-      "options": ["only for select/radio/checkbox — always include at least 3 values"]
-    }
-  ]
-}`;
-
-    const genMessages: Message[] = [{ role: 'user', text: generationPrompt }];
-    const genSystemPrompt = 'You are a JSON form schema generator. Output only valid JSON, nothing else.';
-
-    this.activeCall?.unsubscribe();
-
-    this.startTimer(() => {
-      if (this.isGeneratingForm) {
-        this.activeCall?.unsubscribe();
-        this.activeCall = null;
-        this.isGeneratingForm = false;
-        this.isGenerateStuck = true;
+    this.gemini.sendMessageWithSystemPrompt(summaryMsgs, summarySys).subscribe({
+      next: (res: any) => {
+        clearTimeout(summaryTimeout);
+        this.isGeneratingReport = false;
+        const summary = res.choices[0].message.content ?? '';
+        this.dispatchEmail(summary);
+      },
+      error: () => {
+        clearTimeout(summaryTimeout);
+        this.isGeneratingReport = false;
+        this.dispatchEmail('');
       }
     });
-
-    this.activeCall = this.gemini
-      .sendMessageWithSystemPrompt(genMessages, genSystemPrompt)
-      .subscribe({
-        next: (response: any) => {
-          this.clearTimer();
-          const raw = response.choices[0].message.content;
-          const parsed = this.parseFormJson(raw);
-          if (parsed) {
-            this.generatedForm = parsed;
-            this.phase = CollectorPhase.FormPreview;
-          } else {
-            this.formParseError = true;
-          }
-          this.isGeneratingForm = false;
-          this.activeCall = null;
-        },
-        error: () => {
-          this.clearTimer();
-          this.isGeneratingForm = false;
-          this.activeCall = null;
-          this.formParseError = true;
-        }
-      });
   }
 
-  retryGenerateForm() {
-    this.isGenerateStuck = false;
-    this.generateForm();
-  }
+  private dispatchEmail(summary: string) {
+    const responses: { question: string; answer: string }[] = [
+      ...(summary ? [{ question: 'Executive Summary', answer: summary }] : []),
+      ...this.questions.map(q => ({
+        question: `[${q.section}] ${q.shortLabel} — ${q.fullQuestion}`,
+        answer:   this.answers[q.id] || '(not answered)'
+      }))
+    ];
 
-  parseFormJson(raw: string): FormDefinition | null {
-    try {
-      const stripped = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      const jsonMatch = stripped.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) return null;
-      return JSON.parse(jsonMatch[0]) as FormDefinition;
-    } catch {
-      return null;
-    }
-  }
-
-  approveForm() {
-    this.phase = CollectorPhase.Send;
-  }
-
-  rejectForm() {
-    this.phase = CollectorPhase.SetupChat;
-    this.generatedForm = null;
-    this.messages.push({ role: 'model', text: "No problem! Let's refine the requirements. What would you like to change or add?" });
-    this.scrollPending = true;
-  }
-
-  sendToCustomer() {
-    if (!this.customerEmail.trim() || !this.generatedForm) return;
-    const id = crypto.randomUUID();
-    const stored: StoredForm = {
-      id,
-      createdAt: new Date().toISOString(),
-      requesterEmail: this.interviewerEmail,
-      form: this.generatedForm
-    };
-    const forms: StoredForm[] = JSON.parse(localStorage.getItem('cdc_forms') || '[]');
-    forms.push(stored);
-    localStorage.setItem('cdc_forms', JSON.stringify(forms));
-    this.storedFormId = id;
-    this.generatedLink = `${window.location.origin}/form/${id}`;
-    this.phase = CollectorPhase.Sent;
-  }
-
-  copyLink() {
-    navigator.clipboard.writeText(this.generatedLink).then(() => {
-      this.linkCopied = true;
-      setTimeout(() => this.linkCopied = false, 2000);
+    this.http.post(`${this.apiBase}/api/email/send-responses`, {
+      to:        this.recipientEmail,
+      formTitle: `FVM Assumptions Validation — ${this.respondentName} (${this.respondentRole})`,
+      responses
+    }).subscribe({
+      next:  () => { this.isSendingReport = false; this.phase = FvmPhase.Sent; },
+      error: () => { this.isSendingReport = false; this.phase = FvmPhase.Sent; }
     });
   }
 
-  get mailtoHref(): string {
-    const subject = encodeURIComponent(`Please fill out: ${this.generatedForm?.title ?? 'our form'}`);
-    const body = encodeURIComponent(
-      `Hi,\n\nPlease take a moment to fill out this form:\n${this.generatedLink}\n\nThank you.`
-    );
-    return `mailto:${this.customerEmail}?subject=${subject}&body=${body}`;
+  get sendBtnLabel(): string {
+    if (this.isGeneratingReport) return 'Generating summary…';
+    if (this.isSendingReport)    return 'Sending…';
+    return 'Send Report →';
   }
 
-  newCollection() {
+  startOver() {
     this.activeCall?.unsubscribe();
-    this.activeCall = null;
-    this.phase = CollectorPhase.SetupChat;
-    this.messages = [];
-    this.userInput = '';
-    this.isLoading = false;
-    this.isStuck = false;
-    this.isGeneratingForm = false;
-    this.isGenerateStuck = false;
-    this.formParseError = false;
-    this.interviewerName = '';
-    this.interviewerEmail = '';
-    this.started = false;
+    this.activeCall      = null;
+    this.phase           = FvmPhase.Start;
+    this.messages        = [];
+    this.answers         = {};
+    this.userInput       = '';
+    this.isLoading       = false;
+    this.isStuck         = false;
+    this.started         = false;
     this.pendingMessages = [];
-    this.progressFields.forEach(f => f.value = null);
-    this.generatedForm = null;
-    this.customerEmail = '';
-    this.generatedLink = '';
-    this.storedFormId = '';
-    this.linkCopied = false;
-  }
-
-  onKeyPress(event: KeyboardEvent) {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      this.sendMessage();
-    }
+    this.interviewerName = '';
+    this.respondentName  = '';
+    this.respondentRole  = '';
+    this.recipientEmail  = '';
+    this.isSendingReport = false;
   }
 }
