@@ -1,7 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs/operators';
+import { RouterOutlet, Router } from '@angular/router';
 import { AuthService } from './services/auth.service';
 
 @Component({
@@ -14,14 +13,8 @@ export class AppComponent {
   private router = inject(Router);
   auth = inject(AuthService);
 
-  isLoginPage = false;
-
-  constructor() {
-    this.router.events.pipe(
-      filter(e => e instanceof NavigationEnd)
-    ).subscribe((e: any) => {
-      this.isLoginPage = e.urlAfterRedirects === '/login';
-    });
+  get showNav(): boolean {
+    return this.auth.isLoggedIn() && !this.router.url.startsWith('/login') && !this.router.url.startsWith('/form');
   }
 
   navigate(path: string) {
