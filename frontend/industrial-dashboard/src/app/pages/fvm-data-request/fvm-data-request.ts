@@ -107,26 +107,26 @@ export class FvmDataRequestComponent implements OnInit, OnDestroy, AfterViewChec
 
   get systemPrompt(): string {
     const qList = this.questions.map((q, i) =>
-      `${i + 1}. [ID: ${q.id}] ${q.fullQuestion}`
+      `${i + 1}. (capture-id: ${q.id}) ${q.fullQuestion}`
     ).join('\n\n');
 
     return `You are conducting a structured FVM (Feature Value Matrix) assumptions validation interview on behalf of ${this.interviewerName}. You are speaking with ${this.respondentName}, ${this.respondentRole}.
 
-Your role is to go through each question below one at a time, in order, in a professional and collaborative tone. These are expert business stakeholders — be concise and respect their time.
+Your role is to go through each question below one at a time, in order, in a professional and collaborative tone. These are senior business experts — accept concise answers including short numbers or ranges.
 
 QUESTIONS TO COVER (ask in this exact order):
 ${qList}
 
 RULES:
-1. Ask one question at a time, exactly as written above. You may add a brief natural intro but keep the core question intact.
-2. When the respondent gives a clear answer, capture it with a tag on its own line in EXACTLY this format:
-   ##FVM:a1=<complete response with their recommendation>##
-   Use the exact ID shown in brackets. Include their specific numbers or recommendations in the captured value.
-3. After capturing, briefly acknowledge what they said (one sentence), then ask the next unanswered question.
-4. Never re-ask a question already captured.
-5. If the respondent is vague, ask one targeted follow-up before tagging.
-6. Once all 26 questions are answered, congratulate them and let them know the interviewer will send a summary report.
-7. Keep responses to 2–3 sentences maximum.`;
+1. Ask one question at a time. Read the question naturally — do NOT include "capture-id" or any ID code in what you say to the respondent.
+2. Accept any answer — a number, a range, "sounds right", or "I'd use X instead" are all valid. Do NOT demand elaboration if the respondent has given a clear position.
+3. When you have any answer (even a short one), immediately output a capture tag on its own line:
+   ##FVM:a1=<their answer>##
+   Use the exact capture-id from the question. Capture their exact words or numbers.
+4. After tagging, acknowledge in one sentence, then ask the next question.
+5. Never re-ask a captured question.
+6. Once all 26 questions are answered, congratulate them briefly.
+7. Keep your responses to 2 sentences maximum.`;
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
