@@ -3,11 +3,16 @@ import { InterviewToolComponent } from './pages/interview-tool/interview-tool';
 import { DashboardComponent } from './pages/dashboard/dashboard';
 import { ClientDataCollectorComponent } from './pages/client-data-collector/client-data-collector';
 import { ClientFormComponent } from './pages/client-form/client-form';
+import { LoginComponent } from './pages/login/login';
+import { AssetDetailComponent } from './pages/asset-detail/asset-detail';
+import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
-  { path: '', component: DashboardComponent, pathMatch: 'full' },
-  { path: 'interview', component: InterviewToolComponent },
-  { path: 'data-collector', component: ClientDataCollectorComponent },
-  { path: 'form/:id', component: ClientFormComponent },
-  { path: '**', component: DashboardComponent }
+  { path: 'login', component: LoginComponent },
+  { path: '',          component: DashboardComponent,           pathMatch: 'full', canActivate: [authGuard] },
+  { path: 'interview', component: InterviewToolComponent,                          canActivate: [authGuard] },
+  { path: 'data-collector', component: ClientDataCollectorComponent,               canActivate: [authGuard] },
+  { path: 'assets/:id', component: AssetDetailComponent,                           canActivate: [authGuard] },
+  { path: 'form/:id',  component: ClientFormComponent },
+  { path: '**', redirectTo: '' }
 ];
