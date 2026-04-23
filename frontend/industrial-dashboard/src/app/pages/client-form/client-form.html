@@ -63,8 +63,7 @@
 
         <div class="submit-section">
           <button class="btn-submit" (click)="submitForm()" [disabled]="!allRequiredAnswered || isSendingEmail">
-            <span *ngIf="!isSendingEmail">Submit →</span>
-            <span *ngIf="isSendingEmail">Sending…</span>
+            {{ submitLabel }}
           </button>
           <div class="submit-hint" *ngIf="!allRequiredAnswered">
             Answer all required (*) fields to submit.
@@ -119,4 +118,3 @@
   </ng-container>
 
 </div>
-
