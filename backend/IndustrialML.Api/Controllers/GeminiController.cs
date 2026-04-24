@@ -20,7 +20,7 @@ public class GeminiController : ControllerBase
     {
         var apiKey = _cfg["Claude:ApiKey"];
         var apiUrl = _cfg["Claude:ApiUrl"] ?? "https://api.anthropic.com/v1/messages";
-        var model  = _cfg["Claude:Model"]  ?? "claude-sonnet-4-6";
+        var model  = _cfg["Claude:Model"]  ?? "claude-3-5-sonnet-20241022";
 
         // Extract messages and system prompt from the incoming OpenAI-format request
         var messages = new List<ClaudeMessage>();
