@@ -131,7 +131,7 @@
           </div>
         </div>
         <div class="stuck-banner" *ngIf="isStuck">
-          <span>⚠ The AI took too long to respond.</span>
+          <span>⚠ {{ stuckMessage }}</span>
           <button class="retry-btn" (click)="retryAI()">↺ Retry</button>
         </div>
       </div>
