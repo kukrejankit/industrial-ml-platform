@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, NgZone, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -18,6 +18,7 @@ export class ClientFormComponent implements OnInit, OnDestroy, AfterViewChecked 
   private route  = inject(ActivatedRoute);
   private gemini = inject(GeminiService);
   private http   = inject(HttpClient);
+  private zone   = inject(NgZone);
 
   @ViewChild('chatContainer') chatContainer!: ElementRef;
 
@@ -82,7 +83,7 @@ export class ClientFormComponent implements OnInit, OnDestroy, AfterViewChecked 
 
   private startTimeout() {
     this.clearTimeout();
-    this.timeoutHandle = setTimeout(() => {
+    this.timeoutHandle = setTimeout(() => this.zone.run(() => {
       if (this.isLoading) {
         this.activeCall?.unsubscribe();
         this.activeCall    = null;
@@ -91,7 +92,7 @@ export class ClientFormComponent implements OnInit, OnDestroy, AfterViewChecked 
         this.pendingMessages = [];
         this.scrollPending = true;
       }
-    }, this.AI_TIMEOUT_MS);
+    }), this.AI_TIMEOUT_MS);
   }
 
   private clearTimeout() {
