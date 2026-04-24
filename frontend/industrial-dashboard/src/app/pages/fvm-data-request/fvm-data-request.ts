@@ -77,9 +77,10 @@ export class FvmDataRequestComponent implements OnInit, OnDestroy, AfterViewChec
   messages: Message[]           = [];
   answers: Record<string, string> = {};
   userInput  = '';
-  isLoading  = false;
-  isStuck    = false;
-  started    = false;
+  isLoading    = false;
+  isStuck      = false;
+  stuckMessage = '';
+  started      = false;
 
   private activeCall:      Subscription | null = null;
   private pendingMessages: string[] = [];
@@ -200,14 +201,14 @@ RULES:
           }
         },
         error: (err: any) => {
-          this.isLoading  = false;
-          this.activeCall = null;
+          console.error('FVM AI error:', err?.status, err?.error ?? err?.message ?? err);
+          this.isLoading    = false;
+          this.activeCall   = null;
           this.pendingMessages = [];
-          if (err instanceof TimeoutError) {
-            this.isStuck = true;
-          } else {
-            this.messages.push({ role: 'model', text: 'Sorry, I encountered an error. Please try again.' });
-          }
+          this.isStuck      = true;
+          this.stuckMessage = err instanceof TimeoutError
+            ? 'The AI took too long to respond.'
+            : `AI error (${err?.status ?? 'unknown'}). Please retry.`;
           this.scrollPending = true;
         }
       });
