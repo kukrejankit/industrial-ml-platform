@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, NgZone, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -61,6 +61,7 @@ export enum FvmPhase {
 export class FvmDataRequestComponent implements OnInit, OnDestroy, AfterViewChecked {
   private gemini = inject(GeminiService);
   private http   = inject(HttpClient);
+  private zone   = inject(NgZone);
 
   @ViewChild('chatContainer') chatContainer!: ElementRef;
 
@@ -150,7 +151,7 @@ RULES:
 
   private startTimer(fn: () => void) {
     this.clearTimer();
-    this.timeoutHandle = setTimeout(fn, this.AI_TIMEOUT_MS);
+    this.timeoutHandle = setTimeout(() => this.zone.run(fn), this.AI_TIMEOUT_MS);
   }
 
   private clearTimer() {
