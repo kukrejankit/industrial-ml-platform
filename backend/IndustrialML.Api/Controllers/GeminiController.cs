@@ -78,17 +78,8 @@ public class GeminiController : ControllerBase
         var client = _httpFactory.CreateClient();
         client.DefaultRequestHeaders.Add("x-api-key", apiKey);
         client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-        client.Timeout = TimeSpan.FromSeconds(30);
 
-        HttpResponseMessage response;
-        try
-        {
-            response = await client.PostAsJsonAsync(apiUrl, claudeRequest);
-        }
-        catch (TaskCanceledException)
-        {
-            return StatusCode(504, "Request to Claude API timed out");
-        }
+        var response = await client.PostAsJsonAsync(apiUrl, claudeRequest);
         var claudeJson = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
