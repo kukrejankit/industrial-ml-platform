@@ -38,6 +38,13 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddScoped<MlClientService>();
 var app = builder.Build();
+app.UseExceptionHandler(errorApp => errorApp.Run(async ctx => {
+    ctx.Response.StatusCode = 500;
+    ctx.Response.ContentType = "application/json";
+    var err = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+    if (err != null)
+        await ctx.Response.WriteAsync($"{{\"error\":\"{err.Error.Message.Replace("\"","'")}\"}}");
+}));
 
 try
 {
