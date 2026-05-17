@@ -15,6 +15,7 @@ public class GeminiController : ControllerBase
         _cfg = cfg;
     }
 
+
     [HttpPost("chat")]
     public async Task<IActionResult> Chat([FromBody] JsonElement body)
     {
